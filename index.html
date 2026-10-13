@@ -885,9 +885,16 @@ let rt;
 addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (tab === 'meta') renderGoalResults(); }, 150); });
 
 /* ================= cuenta y sincronización (Firebase) ================= */
-/* Pega aquí la configuración de tu app web de Firebase (ver README). Es pública por diseño:
-   la seguridad la dan las reglas de Firestore (firestore.rules). Con null la app funciona solo en este dispositivo. */
-const FIREBASE_CONFIG = null;
+/* Configuración de la app web de Firebase. Es pública por diseño: la seguridad la dan las reglas de
+   Firestore (firestore.rules). Con null la app funciona solo en este dispositivo. */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD1d9LRDe_-WTgu4Swbs152auer33gmSC4",
+  authDomain: "personal-app-cf4fe.firebaseapp.com",
+  projectId: "personal-app-cf4fe",
+  storageBucket: "personal-app-cf4fe.firebasestorage.app",
+  messagingSenderId: "795055974870",
+  appId: "1:795055974870:web:d16dca1e401866825e1c77"
+};
 const FB_VER = '10.12.2';
 const META_KEY = 'plan-mensual.sync';
 const getMeta = () => { try { return JSON.parse(localStorage.getItem(META_KEY)) || {}; } catch (e) { return {}; } };
