@@ -3,7 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0E6B5A">
+<meta name="theme-color" content="#F2F4F1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1714" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Plan Mensual">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Plan Mensual</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -55,7 +63,7 @@
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
+body { margin: 0; -webkit-tap-highlight-color: transparent; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
 h1, h2, h3, p { margin: 0; }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -1092,6 +1100,7 @@ Object.assign(cloud, {
       document.addEventListener('visibilitychange', () => { if (!document.hidden) cloud.retry(); });
     } catch (e) {
       console.error(e);
+      if (!navigator.onLine) { addEventListener('online', () => cloud.init(), { once: true }); return; }
       toast('No se pudo conectar con el servicio de cuentas. Sigues trabajando en este dispositivo.');
     }
   },
@@ -1119,6 +1128,8 @@ Object.assign(cloud, {
         'auth/invalid-api-key': 'La clave de Firebase de la app no es válida.',
         'auth/api-key-not-valid': 'La clave de Firebase de la app no es válida.'
       };
+      const installed = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+      if (installed && (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment' || e.code === 'auth/web-storage-unsupported')) { toast('El teléfono no permite abrir la ventana de Google dentro de la app instalada. Inicia sesión desde el navegador (Safari o Chrome).'); console.error(e); return; }
       toast(msgs[e.code] || `No se pudo iniciar sesión${e.code ? ` (${e.code})` : ''}. Intenta de nuevo.`);
       console.error(e);
     }
@@ -1303,6 +1314,9 @@ try { render(); } catch (e) {
   $('#resetLocal').addEventListener('click', () => { try { localStorage.removeItem(KEY); localStorage.removeItem(META_KEY); } catch (err) { /* nada */ } location.reload(); });
 }
 cloud.init();
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(e => console.error(e)); });
+}
 })();
 </script>
 </body>
