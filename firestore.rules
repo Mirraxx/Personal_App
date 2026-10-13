@@ -1,14 +1,41 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Cada persona solo puede leer y escribir su propio documento: users/{su uid}
+
+    // Administrador: el único que puede dar o quitar accesos. Si cambias el correo, cámbialo también en index.html.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() == 'israllaire@gmail.com';
+    }
+
+    // Tiene acceso el administrador y los correos agregados en la colección "allowed".
+    function isAllowed() {
+      return isAdmin()
+        || (request.auth != null
+            && request.auth.token.email_verified == true
+            && exists(/databases/$(database)/documents/allowed/$(request.auth.token.email.lower())));
+    }
+
+    // Datos de cada persona: solo su dueño, y solo si su correo tiene acceso.
     match /users/{uid} {
-      allow read, delete: if request.auth != null && request.auth.uid == uid;
-      allow create, update: if request.auth != null && request.auth.uid == uid
+      allow read, delete: if isAllowed() && request.auth.uid == uid;
+      allow create, update: if isAllowed() && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['data', 'updatedAt'])
         && request.resource.data.data is string
         && request.resource.data.data.size() < 900000
         && request.resource.data.updatedAt is number;
+    }
+
+    // Lista de correos con acceso. Id del documento = correo en minúsculas.
+    match /allowed/{mail} {
+      allow read: if isAdmin();
+      allow get: if request.auth != null && request.auth.token.email.lower() == mail;
+      allow create, update: if isAdmin()
+        && mail == mail.lower()
+        && request.resource.data.keys().hasOnly(['email', 'addedAt', 'addedBy'])
+        && request.resource.data.email == mail;
+      allow delete: if isAdmin();
     }
   }
 }

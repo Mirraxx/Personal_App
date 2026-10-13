@@ -80,7 +80,7 @@ button { cursor: pointer; }
 .syncdot[hidden] { display: none; }
 .syncdot.synced { background: var(--good); }
 .syncdot.pending, .syncdot.loading { background: var(--warn); }
-.syncdot.error, .syncdot.offline, .syncdot.conflict { background: var(--crit); }
+.syncdot.error, .syncdot.offline, .syncdot.conflict, .syncdot.denied { background: var(--crit); }
 .account { display: grid; gap: 10px; padding: 14px; border-radius: 14px; background: var(--surface2); }
 .account .who { display: flex; gap: 12px; align-items: center; min-width: 0; }
 .account .who img { width: 40px; height: 40px; border-radius: 50%; flex: none; }
@@ -304,17 +304,89 @@ const BRANDS = ['Visa', 'Mastercard', 'American Express', 'Otra', 'No aplica'];
 const BANKS = ['Banco de Chile', 'BancoEstado', 'Santander', 'BCI', 'Scotiabank', 'Itaú', 'Banco Falabella', 'Banco Ripley', 'Security', 'Consorcio', 'Tenpo', 'Mercado Pago'];
 const CURRENCIES = ['CLP', 'USD', 'EUR', 'MXN', 'ARS', 'COP', 'PEN', 'BRL'];
 
-function emptyMonth() { return { incomes: [], fixed: [], debts: [], savedActual: null }; }
+function emptyMonth() { return { incomes: [], fixed: [], debts: [], savedActual: null, sUpd: 0, del: {}, upd: 0 }; }
 
 function emptyState() {
-  return { settings: { currency: 'CLP', savePct: 20 }, goal: { name: '', target: 0, saved0: 0, deadline: '' }, months: {}, updatedAt: 0 };
+  return { settings: { currency: 'CLP', savePct: 20, upd: 0 }, goal: { name: '', target: 0, saved0: 0, deadline: '', upd: 0 }, months: {}, epoch: 0, updatedAt: 0 };
 }
 const hasData = o => !!o && (Object.keys(o.months || {}).length > 0 || num(o.goal && o.goal.target) > 0 || !!(o.goal && o.goal.name));
+
+/* Valida y normaliza datos que vienen de fuera (respaldo, nube, almacenamiento). Devuelve null si no sirven. */
+const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+function cleanState(o) {
+  if (!o || typeof o !== 'object' || !o.months || typeof o.months !== 'object' || Array.isArray(o.months)) return null;
+  const str = v => (v == null ? '' : String(v)).slice(0, 200);
+  const n = v => Math.max(0, num(v));
+  const st = o.settings || {}, g = o.goal || {};
+  const settings = { currency: CURRENCIES.includes(st.currency) ? st.currency : 'CLP', savePct: Math.min(100, st.savePct == null ? 20 : n(st.savePct)), upd: num(st.upd) };
+  const goal = { name: str(g.name), target: n(g.target), saved0: n(g.saved0), deadline: MONTH_RE.test(g.deadline) ? g.deadline : '', upd: num(g.upd) };
+  const arr = a => Array.isArray(a) ? a.filter(x => x && typeof x === 'object') : [];
+  const base = x => ({ id: str(x.id) || uid(), cr: num(x.cr), upd: num(x.upd) });
+  const months = {};
+  for (const [k, m] of Object.entries(o.months)) {
+    if (!MONTH_RE.test(k) || !m || typeof m !== 'object') continue;
+    const del = {};
+    if (m.del && typeof m.del === 'object') for (const [id, t] of Object.entries(m.del)) del[String(id).slice(0, 50)] = num(t);
+    months[k] = {
+      incomes: arr(m.incomes).map(x => ({ ...base(x), name: str(x.name), amount: n(x.amount) })),
+      fixed: arr(m.fixed).map(x => ({ ...base(x), name: str(x.name), cat: str(x.cat) || CATS[0], amount: n(x.amount) })),
+      debts: arr(m.debts).map(x => ({ ...base(x), bank: str(x.bank), kind: str(x.kind) || KINDS[0], brand: str(x.brand) || BRANDS[0], product: str(x.product), balance: n(x.balance), payment: n(x.payment), rate: n(x.rate), fee: n(x.fee), other: n(x.other) })),
+      savedActual: m.savedActual === null || m.savedActual === undefined || m.savedActual === '' ? null : n(m.savedActual),
+      sUpd: num(m.sUpd), del, upd: num(m.upd)
+    };
+  }
+  return { settings, goal, months, epoch: num(o.epoch), updatedAt: num(o.updatedAt) };
+}
+
+/* Une dos copias de los datos: cada ingreso, gasto o deuda se une por separado (gana la edición más reciente,
+   y lo que solo existe en una copia se conserva). Las eliminaciones quedan anotadas en "del" para que no reaparezcan.
+   "epoch" marca los reinicios (borrar todo, restaurar respaldo): la copia con el reinicio más nuevo reemplaza
+   a la otra, salvo lo que la otra editó después del reinicio. */
+const stable = v => JSON.stringify(v, (k, x) => x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map(y => [y, x[y]])) : x);
+const sig = o => stable([o.settings, o.goal, o.months, o.epoch]);
+const newer = (x, y) => num(x.upd) !== num(y.upd) ? (num(x.upd) > num(y.upd) ? x : y) : (stable(x) >= stable(y) ? x : y);
+const LISTS = ['incomes', 'fixed', 'debts'];
+
+function pruneMonth(m, floor) {
+  const out = { ...m, del: {}, savedActual: num(m.sUpd) > floor ? m.savedActual : null, sUpd: num(m.sUpd) > floor ? m.sUpd : 0 };
+  for (const [id, t] of Object.entries(m.del)) if (t > floor) out.del[id] = t;
+  LISTS.forEach(k => { out[k] = m[k].filter(it => num(it.upd) > floor); });
+  const empty = !LISTS.some(k => out[k].length) && out.savedActual === null && !Object.keys(out.del).length;
+  return empty ? null : out;
+}
+function mergeMonth(x, y) {
+  const del = { ...x.del };
+  for (const [id, t] of Object.entries(y.del)) del[id] = Math.max(del[id] || 0, t);
+  const out = { del, upd: Math.max(num(x.upd), num(y.upd)) };
+  LISTS.forEach(k => {
+    const byId = new Map();
+    [...x[k], ...y[k]].forEach(it => { const c = byId.get(it.id); byId.set(it.id, c ? newer(c, it) : it); });
+    out[k] = [...byId.values()].filter(it => !(del[it.id] >= num(it.upd)))
+      .sort((p, q) => num(p.cr) - num(q.cr) || (p.id < q.id ? -1 : p.id > q.id ? 1 : 0));
+  });
+  const sx = { upd: x.sUpd, v: x.savedActual }, sy = { upd: y.sUpd, v: y.savedActual }, sw = newer(sx, sy);
+  out.savedActual = sw.v; out.sUpd = num(sw.upd);
+  return out;
+}
+function mergeStates(a, b) {
+  const same = num(a.epoch) === num(b.epoch);
+  const [w, l] = num(b.epoch) > num(a.epoch) ? [b, a] : [a, b];
+  const floor = same ? -1 : num(w.epoch);
+  const months = {};
+  new Set([...Object.keys(w.months), ...Object.keys(l.months)]).forEach(k => {
+    const mw = w.months[k] || null;
+    const ml = l.months[k] ? (same ? l.months[k] : pruneMonth(l.months[k], floor)) : null;
+    const m = mw && ml ? mergeMonth(mw, ml) : (mw || ml);
+    if (m) months[k] = m;
+  });
+  const pick = (x, y) => num(y.upd) > floor ? newer(x, y) : x;
+  return { settings: pick(w.settings, l.settings), goal: pick(w.goal, l.goal), months, epoch: num(w.epoch), updatedAt: Math.max(num(a.updatedAt), num(b.updatedAt)) };
+}
 
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) { const s = JSON.parse(raw); if (s && s.months && s.settings) return s; }
+    if (raw) { const s = cleanState(JSON.parse(raw)); if (s) return s; }
   } catch (e) { /* sin almacenamiento */ }
   return emptyState();
 }
@@ -329,6 +401,7 @@ let tab = 'resumen';
 
 const month = (k = cur) => state.months[k];
 const ensureMonth = (k = cur) => (state.months[k] ||= emptyMonth());
+const touchMonth = (k = cur) => { ensureMonth(k).upd = Date.now(); };
 
 /* ================= análisis ================= */
 const sum = (a, f) => a.reduce((s, x) => s + num(f(x)), 0);
@@ -605,7 +678,7 @@ function viewMeta() {
       <div class="field"><label for="g-name">¿Para qué estás ahorrando?</label><input id="g-name" value="${esc(g.name)}" placeholder="Ej. Pie del departamento"></div>
       <div class="field"><label for="g-target">Monto objetivo</label><input id="g-target" type="number" inputmode="decimal" min="0" step="1000" value="${g.target || ''}"></div>
       <div class="field"><label for="g-saved0">Ya tienes ahorrado</label><input id="g-saved0" type="number" inputmode="decimal" min="0" step="1000" value="${g.saved0 || ''}"><span class="hint">Antes de empezar a registrar en esta app.</span></div>
-      <div class="field"><label for="g-deadline">Fecha límite (opcional)</label><input id="g-deadline" type="month" value="${g.deadline || ''}"></div>
+      <div class="field"><label for="g-deadline">Fecha límite (opcional)</label><input id="g-deadline" type="month" value="${esc(g.deadline || '')}"></div>
     </div>
   </section>
   <div id="goalResults" class="stack"></div>
@@ -708,6 +781,7 @@ function drawChart(gs) {
 
 /* ================= formularios (hoja inferior) ================= */
 const overlay = $('#overlay');
+const sheetLocked = () => !!overlay.querySelector('[data-pick]');
 function closeSheet() { overlay.innerHTML = ''; cloud.applyDeferred && cloud.applyDeferred(); }
 function openSheet(html, mount) {
   overlay.innerHTML = `<div class="scrim" data-scrim><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
@@ -761,7 +835,8 @@ function openForm(key, id) {
   openSheet(html, sh => {
     const form = $('#itemForm', sh);
     const doSave = () => {
-      const out = { id: item ? item.id : uid() };
+      const now = Date.now();
+      const out = { id: item ? item.id : uid(), cr: item ? item.cr : now, upd: now };
       for (const f of spec.fields) {
         const el = $('#f-' + f.k, sh);
         if (f.type === 'number') out[f.k] = Math.max(0, num(el.value));
@@ -769,6 +844,7 @@ function openForm(key, id) {
         if (f.req && !out[f.k]) { el.focus(); el.style.borderColor = 'var(--crit)'; toast('Completa el campo “' + f.label + '”.'); return; }
       }
       if (item) m[key][m[key].indexOf(item)] = out; else m[key].push(out);
+      touchMonth();
       save(); closeSheet(); render(); toast('Guardado');
     };
     form.addEventListener('submit', e => { e.preventDefault(); doSave(); });
@@ -778,7 +854,7 @@ function openForm(key, id) {
       const del = e.target.closest('[data-del]');
       if (del) {
         if (!del.dataset.sure) { del.dataset.sure = '1'; del.textContent = 'Toca otra vez para eliminar'; return; }
-        m[key] = m[key].filter(x => x.id !== id); save(); closeSheet(); render(); toast('Eliminado');
+        m[key] = m[key].filter(x => x.id !== id); (m.del ||= {})[id] = Date.now(); touchMonth(); save(); closeSheet(); render(); toast('Eliminado');
       }
     });
   });
@@ -788,6 +864,7 @@ function openSettings() {
   const s = state.settings;
   const html = `<h2>Ajustes y respaldo</h2>
     ${cloud.accountHTML()}
+    ${cloud.accessHTML()}
     <div class="fgrid two">
       <div class="field"><label for="s-pct">Meta de ahorro mensual</label><div class="ib"><input id="s-pct" type="number" inputmode="decimal" min="0" max="100" step="1" value="${s.savePct}"><em>%</em></div><span class="hint">Porcentaje de tu ingreso. Se ajusta solo si no alcanza.</span></div>
       <div class="field"><label for="s-cur">Moneda</label><select id="s-cur">${CURRENCIES.map(c => `<option${c === s.currency ? ' selected' : ''}>${c}</option>`).join('')}</select></div>
@@ -798,6 +875,7 @@ function openSettings() {
   openSheet(html, sh => {
     const ta = $('#s-json', sh);
     ta.value = JSON.stringify(state);
+    cloud.mountAccess(sh);
     sh.addEventListener('click', async e => {
       const b = e.target.closest('button'); if (!b) return;
       if (b.hasAttribute('data-logout')) {
@@ -807,18 +885,20 @@ function openSettings() {
       if (b.hasAttribute('data-apply')) {
         state.settings.savePct = Math.min(100, Math.max(0, num($('#s-pct', sh).value)));
         state.settings.currency = $('#s-cur', sh).value;
+        state.settings.upd = Date.now();
         save(); closeSheet(); render();
       } else if (b.hasAttribute('data-copy')) {
         try { await navigator.clipboard.writeText(ta.value); toast('Respaldo copiado'); } catch (err) { ta.select(); toast('Selecciona y copia el texto'); }
       } else if (b.hasAttribute('data-restore')) {
         try {
-          const o = JSON.parse(ta.value);
-          if (!o || !o.months || !o.settings || !o.goal) throw new Error('formato');
+          const o = cleanState(JSON.parse(ta.value));
+          if (!o) throw new Error('formato');
+          o.epoch = Date.now();
           state = o; save(); closeSheet(); render(); toast('Datos restaurados');
         } catch (err) { toast('El texto no es un respaldo válido.'); }
       } else if (b.hasAttribute('data-wipe')) {
         if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Toca otra vez para borrar todo'; return; }
-        state = emptyState(); state.settings.currency = s.currency;
+        state = emptyState(); state.settings.currency = s.currency; state.epoch = Date.now();
         save(); closeSheet(); render(); toast('Todo borrado');
       }
     });
@@ -830,14 +910,17 @@ function copyPrev() {
   const prev = Object.keys(state.months).filter(k => k < cur).sort().pop();
   if (!prev) return;
   const p = state.months[prev];
+  const now = Date.now();
+  const copy = x => ({ ...x, id: uid(), cr: now, upd: now });
   state.months[cur] = {
-    incomes: p.incomes.map(x => ({ ...x, id: uid() })),
-    fixed: p.fixed.map(x => ({ ...x, id: uid() })),
+    incomes: p.incomes.map(copy),
+    fixed: p.fixed.map(copy),
     debts: p.debts.map(d => {
       const interest = num(d.balance) * num(d.rate) / 100;
-      return { ...d, id: uid(), balance: Math.max(0, Math.round(num(d.balance) + interest - num(d.payment))) };
+      return { ...copy(d), balance: Math.max(0, Math.round(num(d.balance) + interest - num(d.payment))) };
     }),
-    savedActual: null
+    savedActual: null, sUpd: 0, del: {},
+    upd: now
   };
   save(); render(); toast('Datos copiados. Revisa lo que cambió este mes.');
 }
@@ -855,12 +938,12 @@ document.addEventListener('click', e => {
   if (act) {
     const a = act.dataset.act;
     if (a === 'copy-prev') copyPrev();
-    if (a === 'start-empty') { ensureMonth(); save(); render(); }
+    if (a === 'start-empty') { touchMonth(); save(); render(); }
     return;
   }
-  if (t.matches('[data-scrim]')) closeSheet();
+  if (t.matches('[data-scrim]') && !sheetLocked()) closeSheet();
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sheetLocked()) closeSheet(); });
 $('#prev').addEventListener('click', () => { cur = addM(cur, -1); render(); });
 $('#next').addEventListener('click', () => { cur = addM(cur, 1); render(); });
 $('#settings').addEventListener('click', openSettings);
@@ -869,13 +952,14 @@ $('#settings').addEventListener('click', openSettings);
 document.addEventListener('input', e => {
   const t = e.target;
   if (tab !== 'meta') return;
-  if (t.id === 'g-name') state.goal.name = t.value;
-  else if (t.id === 'g-target') state.goal.target = num(t.value);
-  else if (t.id === 'g-saved0') state.goal.saved0 = num(t.value);
-  else if (t.id === 'g-deadline') state.goal.deadline = t.value;
+  if (t.id === 'g-name') { state.goal.name = t.value; state.goal.upd = Date.now(); }
+  else if (t.id === 'g-target') { state.goal.target = num(t.value); state.goal.upd = Date.now(); }
+  else if (t.id === 'g-saved0') { state.goal.saved0 = num(t.value); state.goal.upd = Date.now(); }
+  else if (t.id === 'g-deadline') { state.goal.deadline = t.value; state.goal.upd = Date.now(); }
   else if (t.dataset.saved) {
     const m = ensureMonth(t.dataset.saved);
     m.savedActual = t.value === '' ? null : Math.max(0, num(t.value));
+    m.sUpd = m.upd = Date.now();
   } else return;
   save(); renderGoalResults();
 });
@@ -895,18 +979,20 @@ const FIREBASE_CONFIG = {
   appId: "1:795055974870:web:d16dca1e401866825e1c77"
 };
 const FB_VER = '10.12.2';
+/* Correo del administrador. Debe coincidir con firestore.rules; solo sirve para mostrar el panel de accesos. */
+const ADMIN_EMAIL = 'israllaire@gmail.com';
 const META_KEY = 'plan-mensual.sync';
 const getMeta = () => { try { return JSON.parse(localStorage.getItem(META_KEY)) || {}; } catch (e) { return {}; } };
 const setMeta = patch => { try { localStorage.setItem(META_KEY, JSON.stringify({ ...getMeta(), ...patch })); } catch (e) { /* sin almacenamiento */ } };
 
 Object.assign(cloud, {
-  enabled: !!FIREBASE_CONFIG, user: null, status: 'local', ref: null, unsub: null, pushT: null, deferred: null, auth: null, db: null,
+  enabled: !!FIREBASE_CONFIG, user: null, status: 'local', ready: false, initializing: false, ref: null, unsub: null, pushT: null, deferred: null, auth: null, db: null,
 
   setStatus(st) {
     cloud.status = st;
     const dot = $('#syncDot');
     if (!dot) return;
-    const labels = { synced: 'Sincronizado', pending: 'Guardando en tu cuenta…', loading: 'Conectando…', offline: 'Sin conexión: se enviará al volver', error: 'No se pudo sincronizar', conflict: 'Falta elegir qué datos usar' };
+    const labels = { synced: 'Sincronizado', pending: 'Guardando en tu cuenta…', loading: 'Conectando…', offline: 'Sin conexión: se enviará al volver', error: 'No se pudo sincronizar', conflict: 'Falta elegir qué datos usar', denied: 'Esta cuenta no tiene acceso' };
     dot.hidden = !cloud.user;
     dot.className = 'syncdot ' + st;
     dot.title = labels[st] || '';
@@ -920,8 +1006,68 @@ Object.assign(cloud, {
       <button class="btn gbtn" data-login><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.2 5.5-4.7 7.2l7.6 5.9c4.4-4.1 6.9-10.1 6.9-17.6z"/><path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 0 1 0-9.4l-7.9-6.1a24 24 0 0 0 0 21.6l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>Entrar con Google</button></div>`;
     const u = cloud.user;
     return `<div class="account"><div class="who">${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer">` : ''}<div><b>${esc(u.displayName || 'Mi cuenta')}</b><span>${esc(u.email || '')}</span></div></div>
-      <span class="pill info" style="width:fit-content"><span id="syncLabel">${esc($('#syncDot')?.title || '')}</span></span>
+      <span class="pill ${cloud.status === 'denied' ? 'crit' : 'info'}" style="width:fit-content"><span id="syncLabel">${esc($('#syncDot')?.title || '')}</span></span>
+      ${cloud.status === 'denied' ? `<span class="hint muted">Pide acceso a ${esc(ADMIN_EMAIL)}. Mientras tanto, la app sigue funcionando solo en este dispositivo.</span>` : ''}
       <div><button class="btn sm" data-logout>Cerrar sesión</button></div></div>`;
+  },
+
+  isAdmin() { return !!cloud.user && String(cloud.user.email || '').toLowerCase() === ADMIN_EMAIL; },
+
+  accessHTML() {
+    if (!cloud.isAdmin() || !cloud.db) return '';
+    return `<div class="account"><b>Acceso a la app</b>
+      <span class="hint muted">Solo estos correos pueden guardar datos. Cada persona que agregues tiene sus propios datos y no ve los tuyos.</span>
+      <div class="rows" id="accessList"><p class="empty">Cargando…</p></div>
+      <form id="accessForm" class="fgrid" novalidate style="gap:8px">
+        <div class="field"><label for="a-email">Dar acceso a otro correo de Google</label><input id="a-email" type="email" inputmode="email" autocomplete="off" placeholder="persona@gmail.com"></div>
+        <button class="btn primary" type="submit">Dar acceso</button>
+      </form></div>`;
+  },
+
+  async mountAccess(sh) {
+    if (!cloud.isAdmin() || !cloud.db) return;
+    const list = $('#accessList', sh), col = cloud.db.collection('allowed');
+    const paint = async () => {
+      try {
+        const snap = await col.get();
+        const mails = snap.docs.map(d => d.id).sort();
+        list.innerHTML = `<div class="row" style="grid-template-columns:1fr"><div class="t"><b>${esc(ADMIN_EMAIL)}</b><span>Administrador (tú)</span></div></div>` +
+          mails.map(m => `<div class="row" style="grid-template-columns:1fr auto"><div class="t"><b>${esc(m)}</b></div><button class="btn sm danger" type="button" data-revoke="${esc(m)}">Quitar</button></div>`).join('');
+      } catch (e) {
+        console.error(e);
+        list.innerHTML = '<p class="empty">No se pudo cargar la lista. Revisa que las reglas nuevas estén publicadas en Firebase.</p>';
+      }
+    };
+    await paint();
+    $('#accessForm', sh).addEventListener('submit', async e => {
+      e.preventDefault();
+      const input = $('#a-email', sh), mail = input.value.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { toast('Escribe un correo válido.'); input.focus(); return; }
+      if (mail === ADMIN_EMAIL) { toast('Ese es tu correo: ya tienes acceso.'); return; }
+      try {
+        await col.doc(mail).set({ email: mail, addedAt: Date.now(), addedBy: ADMIN_EMAIL });
+        input.value = ''; toast(`Acceso dado a ${mail}`); await paint();
+      } catch (err) { console.error(err); toast('No se pudo dar el acceso. Revisa tu conexión y las reglas.'); }
+    });
+    list.addEventListener('click', async e => {
+      const b = e.target.closest('[data-revoke]'); if (!b) return;
+      if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Toca otra vez'; return; }
+      try { await col.doc(b.dataset.revoke).delete(); toast('Acceso quitado'); await paint(); }
+      catch (err) { console.error(err); toast('No se pudo quitar el acceso.'); }
+    });
+  },
+
+  /* Un rechazo de las reglas significa que el correo no está autorizado (o se le quitó el acceso). */
+  fail(e) {
+    console.error(e);
+    if (e && e.code === 'permission-denied') {
+      cloud.ready = false; cloud.unsub && cloud.unsub(); cloud.unsub = null; clearTimeout(cloud.pushT);
+      cloud.setStatus('denied');
+      toast(`Este correo no tiene acceso a la app. Pide acceso a ${ADMIN_EMAIL}.`);
+      return true;
+    }
+    cloud.setStatus(navigator.onLine ? 'error' : 'offline');
+    return false;
   },
 
   loadScript(src) {
@@ -942,42 +1088,61 @@ Object.assign(cloud, {
       cloud.auth = firebase.auth();
       cloud.db = firebase.firestore();
       cloud.auth.onAuthStateChanged(cloud.onUser);
-      addEventListener('online', () => { if (cloud.user && getMeta().dirty) cloud.schedulePush(); });
+      addEventListener('online', cloud.retry);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) cloud.retry(); });
     } catch (e) {
       console.error(e);
       toast('No se pudo conectar con el servicio de cuentas. Sigues trabajando en este dispositivo.');
     }
   },
 
+  /* Reintenta lo que quedó pendiente: la lectura inicial que falló o los cambios sin enviar. */
+  retry() {
+    if (!cloud.user || cloud.initializing || cloud.status === 'conflict' || cloud.status === 'denied') return;
+    if (!cloud.ready) cloud.onUser(cloud.user);
+    else if (getMeta().dirty) cloud.schedulePush();
+  },
+
   async login() {
     if (!cloud.auth) { toast('El servicio de cuentas aún está cargando. Intenta de nuevo.'); return; }
-    const provider = new firebase.auth.GoogleAuthProvider();
-    try { await cloud.auth.signInWithPopup(provider); }
+    try { await cloud.auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
     catch (e) {
-      if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') { cloud.auth.signInWithRedirect(provider); return; }
       if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return;
-      toast(e.code === 'auth/unauthorized-domain' ? 'Este sitio no está autorizado en Firebase. Revisa los dominios autorizados.' : 'No se pudo iniciar sesión. Intenta de nuevo.');
+      const msgs = {
+        'auth/popup-blocked': 'El navegador bloqueó la ventana de Google. Permite las ventanas emergentes para este sitio e inténtalo de nuevo.',
+        'auth/operation-not-supported-in-this-environment': 'Este navegador no permite iniciar sesión aquí. Abre la app en Safari o Chrome.',
+        'auth/unauthorized-domain': 'Este sitio no está autorizado en Firebase. Revisa los dominios autorizados.'
+      };
+      toast(msgs[e.code] || 'No se pudo iniciar sesión. Intenta de nuevo.');
       console.error(e);
     }
   },
 
+  /* Cierra sesión solo si todo lo que hay en este dispositivo ya está en la cuenta. Los datos del dispositivo
+     se borran únicamente si estaban sincronizados con esta cuenta; si la cuenta no tiene acceso, se conservan. */
   async logout() {
+    clearTimeout(cloud.pushT);
+    const denied = cloud.status === 'denied';
+    const synced = !denied && getMeta().owner === (cloud.user && cloud.user.uid);
+    if (synced && getMeta().dirty) {
+      const ok = cloud.ready && await cloud.pushNow();
+      if (!ok) { toast('Tus últimos cambios aún no se envían a tu cuenta. Conéctate e inténtalo de nuevo.'); return; }
+    }
     try {
-      clearTimeout(cloud.pushT);
-      if (getMeta().dirty && cloud.status !== 'conflict') await cloud.pushNow();
       cloud.unsub && cloud.unsub(); cloud.unsub = null;
+      cloud.deferred = null; cloud.ready = false;
       await cloud.auth.signOut();
     } catch (e) { console.error(e); }
-    state = emptyState(); saveLocal(); setMeta({ owner: null, dirty: false, lastSynced: 0 });
-    render(); toast('Sesión cerrada. Tus datos siguen en tu cuenta.');
+    if (synced) { state = emptyState(); saveLocal(); setMeta({ owner: null, dirty: false, lastSynced: 0 }); }
+    render(); toast(synced ? 'Sesión cerrada. Tus datos siguen en tu cuenta.' : 'Sesión cerrada.');
   },
 
   parse(snap) {
     try {
       const d = snap.data();
-      const o = JSON.parse(d.data);
-      if (!o || !o.months || !o.settings || !o.goal) return null;
-      o.updatedAt = num(d.updatedAt) || num(o.updatedAt);
+      const o = cleanState(JSON.parse(d.data));
+      if (!o) return null;
+      o.updatedAt = num(d.updatedAt) || o.updatedAt;
       return o;
     } catch (e) { return null; }
   },
@@ -988,60 +1153,80 @@ Object.assign(cloud, {
     render();
   },
 
+  /* Une los datos de la nube con los de este dispositivo; si aquí hay algo que la nube no tiene, lo envía. */
+  integrate(remote) {
+    const merged = mergeStates(state, remote);
+    const changed = sig(merged) !== sig(state);
+    if (changed) { state = merged; saveLocal(); render(); }
+    if (sig(merged) !== sig(remote)) cloud.schedulePush();
+    else setMeta({ dirty: false, lastSynced: remote.updatedAt });
+    return changed;
+  },
+
   async onUser(user) {
     cloud.user = user;
     if (overlay.querySelector('[data-apply]')) overlay.innerHTML = '';
     cloud.unsub && cloud.unsub(); cloud.unsub = null;
+    cloud.ready = false;
     if (!user) { cloud.setStatus('local'); return; }
+    if (cloud.initializing) return;
+    cloud.initializing = true;
     cloud.setStatus('loading');
     cloud.ref = cloud.db.collection('users').doc(user.uid);
     try {
       const snap = await cloud.ref.get();
-      const meta = getMeta();
-      if (meta.owner && meta.owner !== user.uid) { state = emptyState(); saveLocal(); setMeta({ dirty: false, lastSynced: 0 }); }
+      let meta = getMeta();
+      if (meta.owner && meta.owner !== user.uid) { state = emptyState(); saveLocal(); setMeta({ owner: null, dirty: false, lastSynced: 0 }); meta = getMeta(); }
       const mine = meta.owner === user.uid;
       const local = hasData(state);
       const remote = snap.exists ? cloud.parse(snap) : null;
-      setMeta({ owner: user.uid });
-      if (!remote) {
-        if (local) { await cloud.pushNow(true); }
-        else { cloud.setStatus('synced'); }
-      } else if (!local) {
-        cloud.adopt(remote); cloud.setStatus('synced');
-      } else if (mine && !meta.dirty) {
-        if (remote.updatedAt > state.updatedAt) cloud.adopt(remote);
-        cloud.setStatus('synced');
-      } else if (mine && meta.dirty && remote.updatedAt <= (meta.lastSynced || 0)) {
-        await cloud.pushNow(true);
-      } else if (remote.updatedAt === state.updatedAt) {
-        setMeta({ dirty: false, lastSynced: remote.updatedAt }); cloud.setStatus('synced');
-      } else {
+      if (remote && local && !mine) {
+        cloud.initializing = false;
         cloud.setStatus('conflict');
         cloud.askConflict(remote);
         return;
       }
+      setMeta({ owner: user.uid });
+      cloud.ready = true;
+      if (!remote) {
+        if (local && !(await cloud.pushNow())) throw new Error('push');
+      } else if (!local) {
+        cloud.adopt(remote);
+      } else {
+        cloud.integrate(remote);
+      }
+      if (cloud.status === 'loading') cloud.setStatus('synced');
       cloud.listen();
       render();
     } catch (e) {
       console.error(e);
-      cloud.setStatus(navigator.onLine ? 'error' : 'offline');
-      toast('No se pudo leer tu cuenta. Revisa las reglas de Firestore en el README.');
+      cloud.ready = false;
+      if (!cloud.fail(e)) toast('No se pudo leer tu cuenta. Se reintentará al volver la conexión.');
     }
+    cloud.initializing = false;
   },
 
   askConflict(remote) {
     const when = t => t ? new Date(t).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) : 'sin fecha';
     const n = o => Object.keys(o.months).length;
+    const months = o => `${n(o)} ${n(o) === 1 ? 'mes' : 'meses'}`;
     openSheet(`<h2>Elige qué datos usar</h2>
-      <p class="muted">Este dispositivo y tu cuenta tienen datos distintos. Se conservarán solo los que elijas.</p>
-      <div class="account"><b>Datos de tu cuenta</b><span class="muted">${n(remote)} ${n(remote) === 1 ? 'mes' : 'meses'} · actualizados ${when(remote.updatedAt)}</span><button class="btn primary" data-pick="cloud">Usar los de mi cuenta</button></div>
-      <div class="account"><b>Datos de este dispositivo</b><span class="muted">${n(state)} ${n(state) === 1 ? 'mes' : 'meses'} · actualizados ${when(state.updatedAt)}</span><button class="btn" data-pick="local">Usar los de este dispositivo</button></div>
-      <p class="hint muted">Los que no elijas se reemplazan. Si dudas, copia un respaldo desde Ajustes antes de decidir.</p>`, sh => {
+      <p class="muted">Este dispositivo y tu cuenta tienen datos distintos. Elige qué hacer. No podrás cerrar esta ventana sin decidir.</p>
+      <div class="account"><b>Combinar ambos (recomendado)</b><span class="muted">Se conservan los meses de los dos lados. Si un mes está en ambos, queda el editado más recientemente.</span><button class="btn primary" data-pick="merge">Combinar</button></div>
+      <div class="account"><b>Datos de tu cuenta</b><span class="muted">${months(remote)} · actualizados ${when(remote.updatedAt)}</span><button class="btn" data-pick="cloud">Usar solo los de mi cuenta</button></div>
+      <div class="account"><b>Datos de este dispositivo</b><span class="muted">${months(state)} · actualizados ${when(state.updatedAt)}</span><button class="btn" data-pick="local">Usar solo los de este dispositivo</button></div>
+      <p class="hint muted">Los que no elijas en las dos últimas opciones se reemplazan.</p>`, sh => {
       sh.addEventListener('click', async e => {
         const b = e.target.closest('[data-pick]'); if (!b) return;
+        const uidNow = cloud.user.uid;
+        setMeta({ owner: uidNow });
+        cloud.ready = true;
+        closeSheet();
         if (b.dataset.pick === 'cloud') cloud.adopt(remote);
-        else await cloud.pushNow(true);
-        cloud.setStatus('synced'); cloud.listen(); closeSheet(); render();
+        else if (b.dataset.pick === 'local') { state.epoch = Date.now(); save(); }
+        else cloud.integrate(remote);
+        if (cloud.status === 'conflict') cloud.setStatus('synced');
+        cloud.listen(); render();
       });
     });
   },
@@ -1051,48 +1236,66 @@ Object.assign(cloud, {
     cloud.unsub = cloud.ref.onSnapshot(snap => {
       if (snap.metadata.hasPendingWrites || !snap.exists) return;
       const remote = cloud.parse(snap);
-      if (!remote || remote.updatedAt <= state.updatedAt || getMeta().dirty) return;
+      if (!remote || remote.updatedAt === num(getMeta().lastSynced)) return;
       cloud.deferred = remote;
       cloud.applyDeferred();
-    }, e => { console.error(e); cloud.setStatus(navigator.onLine ? 'error' : 'offline'); });
+    }, e => { cloud.fail(e); });
   },
 
-  /* No se reemplazan los datos mientras hay un formulario abierto o se está escribiendo. */
+  /* No se tocan los datos mientras hay un formulario abierto o se está escribiendo; al terminar se unen. */
   applyDeferred() {
     if (!cloud.deferred) return;
+    if (!cloud.user || !cloud.ready) { cloud.deferred = null; return; }
     const a = document.activeElement;
     const busy = overlay.firstChild || (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
     if (busy) return;
     const r = cloud.deferred; cloud.deferred = null;
-    cloud.adopt(r); cloud.setStatus('synced'); toast('Datos actualizados desde otro dispositivo');
+    if (cloud.integrate(r)) toast('Datos actualizados desde otro dispositivo');
+    if (cloud.status !== 'pending') cloud.setStatus('synced');
   },
 
   schedulePush() {
-    if (!cloud.enabled || !cloud.user) return;
+    if (!cloud.enabled || !cloud.user || cloud.status === 'denied') return;
     setMeta({ dirty: true });
-    if (cloud.status === 'conflict' || cloud.status === 'loading') return;
+    if (!cloud.ready) return;
     cloud.setStatus(navigator.onLine ? 'pending' : 'offline');
     clearTimeout(cloud.pushT);
     cloud.pushT = setTimeout(() => cloud.pushNow(), 900);
   },
 
-  async pushNow(force) {
-    if (!cloud.user || !cloud.ref) return;
-    if (force && !state.updatedAt) state.updatedAt = Date.now();
+  /* Envía los datos dentro de una transacción: si la nube cambió desde la última vez, se unen antes de guardar,
+     así un cambio hecho en otro dispositivo nunca se pisa. Devuelve true si quedó guardado. */
+  async pushNow() {
+    if (!cloud.user || !cloud.ref) return false;
+    if (!state.updatedAt) state.updatedAt = Date.now();
     const ts = state.updatedAt;
+    let merged = null;
     try {
-      await cloud.ref.set({ data: JSON.stringify(state), updatedAt: ts });
-      if (state.updatedAt === ts) { setMeta({ dirty: false, lastSynced: ts }); cloud.setStatus('synced'); }
-      else cloud.schedulePush();
+      await cloud.db.runTransaction(async tx => {
+        const snap = await tx.get(cloud.ref);
+        const remote = snap.exists ? cloud.parse(snap) : null;
+        merged = remote ? mergeStates(state, remote) : { ...state };
+        merged.updatedAt = Math.max(ts, remote ? remote.updatedAt : 0);
+        tx.set(cloud.ref, { data: JSON.stringify(merged), updatedAt: merged.updatedAt });
+      });
     } catch (e) {
-      console.error(e);
-      cloud.setStatus(navigator.onLine ? 'error' : 'offline');
+      cloud.fail(e);
+      return false;
     }
+    if (state.updatedAt !== ts) { cloud.schedulePush(); return true; }
+    setMeta({ dirty: false, lastSynced: merged.updatedAt });
+    if (sig(merged) !== sig(state)) { cloud.deferred = merged; cloud.applyDeferred(); }
+    cloud.setStatus('synced');
+    return true;
   }
 });
 document.addEventListener('focusout', () => setTimeout(() => cloud.applyDeferred(), 50));
 
-render();
+try { render(); } catch (e) {
+  console.error(e);
+  view.innerHTML = '<div class="card"><h2>No se pudo mostrar tu información</h2><p class="muted" style="margin-block:6px 14px">Los datos guardados en este dispositivo parecen dañados. Si usas una cuenta, tus datos siguen en ella.</p><button class="btn danger" id="resetLocal">Borrar los datos de este dispositivo</button></div>';
+  $('#resetLocal').addEventListener('click', () => { try { localStorage.removeItem(KEY); localStorage.removeItem(META_KEY); } catch (err) { /* nada */ } location.reload(); });
+}
 cloud.init();
 })();
 </script>
