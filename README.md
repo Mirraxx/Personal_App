@@ -9,6 +9,17 @@ App personal (web y móvil) para planificar las finanzas mes a mes.
 
 Es un solo archivo, `index.html`, sin proceso de build. Los datos se guardan en el `localStorage` del dispositivo. Con la cuenta de Google activada, los mismos datos se sincronizan entre tu teléfono y tu navegador.
 
+## Instalarla en el teléfono
+
+La app se puede instalar desde el navegador, sin tienda de aplicaciones. Queda con su propio ícono, en pantalla completa, y la pantalla abre aunque no tengas conexión (guardar en la cuenta y sincronizar sí necesitan internet).
+
+- **iPhone (Safari)**: abre la dirección del sitio, toca **Compartir** y luego **Agregar a pantalla de inicio**. En iOS 17 o posterior puedes elegir si se abre como app (pantalla completa) o como acceso directo al navegador, con el interruptor **Abrir como app web**.
+- **Android (Chrome)**: abre la dirección, toca el menú ⋮ y luego **Instalar app** (o **Agregar a la pantalla principal**).
+
+Nota para iPhone: la app instalada guarda sus datos y su sesión aparte de Safari, así que debes iniciar sesión con Google dentro de ella. Si Apple bloquea la ventana de Google en la app instalada, inicia sesión desde Safari o instala la app con **Abrir como app web** desactivado.
+
+Archivos que lo hacen posible: `manifest.webmanifest`, `sw.js` (service worker) e `icons/`. Si cambias el contenido de los archivos que `sw.js` guarda, sube el número de `CACHE` para que los teléfonos lo actualicen.
+
 ## Activar la cuenta (Firebase)
 
 Sin esta configuración la app funciona igual, solo en el dispositivo donde la abras.
