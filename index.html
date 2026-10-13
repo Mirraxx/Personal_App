@@ -75,6 +75,20 @@ button { cursor: pointer; }
 .iconbtn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; flex: none; }
 .iconbtn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .iconbtn:hover { background: var(--surface2); }
+.iconbtn { position: relative; }
+.syncdot { position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--surface); background: var(--muted); }
+.syncdot[hidden] { display: none; }
+.syncdot.synced { background: var(--good); }
+.syncdot.pending, .syncdot.loading { background: var(--warn); }
+.syncdot.error, .syncdot.offline, .syncdot.conflict { background: var(--crit); }
+.account { display: grid; gap: 10px; padding: 14px; border-radius: 14px; background: var(--surface2); }
+.account .who { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.account .who img { width: 40px; height: 40px; border-radius: 50%; flex: none; }
+.account .who div { min-width: 0; }
+.account .who b, .account .who span { display: block; overflow-wrap: anywhere; }
+.account .who span { font-size: 13px; color: var(--muted); }
+.gbtn { gap: 10px; justify-content: center; padding: 11px 16px; }
+.gbtn svg { width: 18px; height: 18px; }
 
 .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)); }
 .tab { border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border-radius: 12px; font-size: 12px; font-weight: 600; color: var(--muted); }
@@ -236,7 +250,7 @@ textarea { width: 100%; min-height: 90px; border: 1px solid var(--line); backgro
         <div class="label" id="monthLabel" aria-live="polite"></div>
         <button class="iconbtn" id="next" aria-label="Mes siguiente"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
       </div>
-      <button class="iconbtn" id="settings" aria-label="Ajustes y respaldo"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+      <button class="iconbtn" id="settings" aria-label="Ajustes, cuenta y respaldo"><span class="syncdot" id="syncDot" hidden></span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     </header>
     <div id="view" class="stack"></div>
   </main>
@@ -293,8 +307,9 @@ const CURRENCIES = ['CLP', 'USD', 'EUR', 'MXN', 'ARS', 'COP', 'PEN', 'BRL'];
 function emptyMonth() { return { incomes: [], fixed: [], debts: [], savedActual: null }; }
 
 function emptyState() {
-  return { settings: { currency: 'CLP', savePct: 20 }, goal: { name: '', target: 0, saved0: 0, deadline: '' }, months: {} };
+  return { settings: { currency: 'CLP', savePct: 20 }, goal: { name: '', target: 0, saved0: 0, deadline: '' }, months: {}, updatedAt: 0 };
 }
+const hasData = o => !!o && (Object.keys(o.months || {}).length > 0 || num(o.goal && o.goal.target) > 0 || !!(o.goal && o.goal.name));
 
 function load() {
   try {
@@ -303,9 +318,12 @@ function load() {
   } catch (e) { /* sin almacenamiento */ }
   return emptyState();
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* sin almacenamiento */ } }
+function saveLocal() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* sin almacenamiento */ } }
+/* Toda edición pasa por save(): marca la hora del cambio y lo envía a la cuenta si hay sesión. */
+function save() { state.updatedAt = Date.now(); saveLocal(); cloud.schedulePush(); }
 
 let state = load();
+const cloud = {};
 let cur = ymOf(new Date());
 let tab = 'resumen';
 
@@ -455,7 +473,8 @@ function emptyMonthCard() {
   const prev = Object.keys(state.months).filter(k => k < cur).sort().pop();
   return `<div class="card"><h2>Este mes aún no tiene datos</h2>
     <p class="muted" style="margin-block:6px 14px">${prev ? `Puedes traer tus ingresos, gastos fijos y deudas de ${monthName(prev)} y ajustar lo que cambió. Los saldos de deuda se actualizan con intereses y pagos.` : 'Empieza agregando tus ingresos, gastos fijos y deudas.'}</p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">${prev ? `<button class="btn primary" data-act="copy-prev">Copiar desde ${esc(monthName(prev, { month: 'long' }))}</button>` : ''}<button class="btn${prev ? '' : ' primary'}" data-act="start-empty">${prev ? 'Empezar en blanco' : 'Empezar este mes'}</button></div></div>`;
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${prev ? `<button class="btn primary" data-act="copy-prev">Copiar desde ${esc(monthName(prev, { month: 'long' }))}</button>` : ''}<button class="btn${prev ? '' : ' primary'}" data-act="start-empty">${prev ? 'Empezar en blanco' : 'Empezar este mes'}</button></div>
+    ${cloud.enabled && !cloud.user ? `<p class="muted" style="margin-top:14px;font-size:13.5px">¿Ya usas la app en otro dispositivo? <button class="btn sm ghost" data-login>Entrar con Google</button></p>` : ''}</div>`;
 }
 
 /* ---- Resumen ---- */
@@ -689,7 +708,7 @@ function drawChart(gs) {
 
 /* ================= formularios (hoja inferior) ================= */
 const overlay = $('#overlay');
-function closeSheet() { overlay.innerHTML = ''; }
+function closeSheet() { overlay.innerHTML = ''; cloud.applyDeferred && cloud.applyDeferred(); }
 function openSheet(html, mount) {
   overlay.innerHTML = `<div class="scrim" data-scrim><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
   const first = $('.sheet input, .sheet select', overlay);
@@ -768,18 +787,24 @@ function openForm(key, id) {
 function openSettings() {
   const s = state.settings;
   const html = `<h2>Ajustes y respaldo</h2>
+    ${cloud.accountHTML()}
     <div class="fgrid two">
       <div class="field"><label for="s-pct">Meta de ahorro mensual</label><div class="ib"><input id="s-pct" type="number" inputmode="decimal" min="0" max="100" step="1" value="${s.savePct}"><em>%</em></div><span class="hint">Porcentaje de tu ingreso. Se ajusta solo si no alcanza.</span></div>
       <div class="field"><label for="s-cur">Moneda</label><select id="s-cur">${CURRENCIES.map(c => `<option${c === s.currency ? ' selected' : ''}>${c}</option>`).join('')}</select></div>
     </div>
-    <div class="field"><label for="s-json">Respaldo de tus datos</label><textarea id="s-json" spellcheck="false"></textarea><span class="hint">Tus datos viven solo en este dispositivo. Copia este texto para guardarlo, o pega uno anterior y restaura.</span></div>
-    <div class="actions"><button class="btn sm" data-copy>Copiar respaldo</button><button class="btn sm" data-restore>Restaurar desde el texto</button><button class="btn sm danger" data-wipe>Borrar todo</button></div>
+    <div class="field"><label for="s-json">Respaldo de tus datos</label><textarea id="s-json" spellcheck="false"></textarea><span class="hint">${cloud.user ? 'Tus datos se guardan en tu cuenta. ' : 'Tus datos viven solo en este dispositivo. '}Copia este texto para tener una copia propia, o pega uno anterior y restaura.</span></div>
+    <div class="actions"><button class="btn sm" data-copy>Copiar respaldo</button><button class="btn sm" data-restore>Restaurar desde el texto</button><button class="btn sm danger" data-wipe>${cloud.user ? 'Borrar todo (también en tu cuenta)' : 'Borrar todo'}</button></div>
     <div class="actions"><span class="spacer"></span><button class="btn primary" data-apply>Listo</button></div>`;
   openSheet(html, sh => {
     const ta = $('#s-json', sh);
     ta.value = JSON.stringify(state);
     sh.addEventListener('click', async e => {
       const b = e.target.closest('button'); if (!b) return;
+      if (b.hasAttribute('data-login')) { cloud.login(); return; }
+      if (b.hasAttribute('data-logout')) {
+        if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Se borra de este dispositivo y queda en tu cuenta. Toca otra vez'; return; }
+        closeSheet(); cloud.logout(); return;
+      }
       if (b.hasAttribute('data-apply')) {
         state.settings.savePct = Math.min(100, Math.max(0, num($('#s-pct', sh).value)));
         state.settings.currency = $('#s-cur', sh).value;
@@ -826,6 +851,7 @@ document.addEventListener('click', e => {
   if (add) { openForm(add.dataset.add); return; }
   const ed = t.closest('[data-edit]');
   if (ed) { const [k, id] = ed.dataset.edit.split(':'); openForm(k, id); return; }
+  if (t.closest('[data-login]')) { cloud.login(); return; }
   const act = t.closest('[data-act]');
   if (act) {
     const a = act.dataset.act;
@@ -858,7 +884,210 @@ document.addEventListener('input', e => {
 let rt;
 addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (tab === 'meta') renderGoalResults(); }, 150); });
 
+/* ================= cuenta y sincronización (Firebase) ================= */
+/* Pega aquí la configuración de tu app web de Firebase (ver README). Es pública por diseño:
+   la seguridad la dan las reglas de Firestore (firestore.rules). Con null la app funciona solo en este dispositivo. */
+const FIREBASE_CONFIG = null;
+const FB_VER = '10.12.2';
+const META_KEY = 'plan-mensual.sync';
+const getMeta = () => { try { return JSON.parse(localStorage.getItem(META_KEY)) || {}; } catch (e) { return {}; } };
+const setMeta = patch => { try { localStorage.setItem(META_KEY, JSON.stringify({ ...getMeta(), ...patch })); } catch (e) { /* sin almacenamiento */ } };
+
+Object.assign(cloud, {
+  enabled: !!FIREBASE_CONFIG, user: null, status: 'local', ref: null, unsub: null, pushT: null, deferred: null, auth: null, db: null,
+
+  setStatus(st) {
+    cloud.status = st;
+    const dot = $('#syncDot');
+    if (!dot) return;
+    const labels = { synced: 'Sincronizado', pending: 'Guardando en tu cuenta…', loading: 'Conectando…', offline: 'Sin conexión: se enviará al volver', error: 'No se pudo sincronizar', conflict: 'Falta elegir qué datos usar' };
+    dot.hidden = !cloud.user;
+    dot.className = 'syncdot ' + st;
+    dot.title = labels[st] || '';
+    const label = $('#syncLabel');
+    if (label) label.textContent = labels[st] || '';
+  },
+
+  accountHTML() {
+    if (!cloud.enabled) return `<div class="account"><b>Cuenta</b><span class="hint muted">La sincronización entre dispositivos aún no está activada. Los pasos están en el README.</span></div>`;
+    if (!cloud.user) return `<div class="account"><b>Cuenta</b><span class="hint muted">Entra con Google para usar los mismos datos en tu teléfono y en el navegador.</span>
+      <button class="btn gbtn" data-login><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.2 5.5-4.7 7.2l7.6 5.9c4.4-4.1 6.9-10.1 6.9-17.6z"/><path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 0 1 0-9.4l-7.9-6.1a24 24 0 0 0 0 21.6l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>Entrar con Google</button></div>`;
+    const u = cloud.user;
+    return `<div class="account"><div class="who">${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer">` : ''}<div><b>${esc(u.displayName || 'Mi cuenta')}</b><span>${esc(u.email || '')}</span></div></div>
+      <span class="pill info" style="width:fit-content"><span id="syncLabel">${esc($('#syncDot')?.title || '')}</span></span>
+      <div><button class="btn sm" data-logout>Cerrar sesión</button></div></div>`;
+  },
+
+  loadScript(src) {
+    return new Promise((ok, fail) => {
+      const el = document.createElement('script');
+      el.src = src; el.onload = ok; el.onerror = () => fail(new Error('No se pudo cargar ' + src));
+      document.head.appendChild(el);
+    });
+  },
+
+  async init() {
+    if (!cloud.enabled) return;
+    try {
+      const base = `https://www.gstatic.com/firebasejs/${FB_VER}/firebase-`;
+      await cloud.loadScript(base + 'app-compat.js');
+      await Promise.all([cloud.loadScript(base + 'auth-compat.js'), cloud.loadScript(base + 'firestore-compat.js')]);
+      firebase.initializeApp(FIREBASE_CONFIG);
+      cloud.auth = firebase.auth();
+      cloud.db = firebase.firestore();
+      cloud.auth.onAuthStateChanged(cloud.onUser);
+      addEventListener('online', () => { if (cloud.user && getMeta().dirty) cloud.schedulePush(); });
+    } catch (e) {
+      console.error(e);
+      toast('No se pudo conectar con el servicio de cuentas. Sigues trabajando en este dispositivo.');
+    }
+  },
+
+  async login() {
+    if (!cloud.auth) { toast('El servicio de cuentas aún está cargando. Intenta de nuevo.'); return; }
+    const provider = new firebase.auth.GoogleAuthProvider();
+    try { await cloud.auth.signInWithPopup(provider); }
+    catch (e) {
+      if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') { cloud.auth.signInWithRedirect(provider); return; }
+      if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return;
+      toast(e.code === 'auth/unauthorized-domain' ? 'Este sitio no está autorizado en Firebase. Revisa los dominios autorizados.' : 'No se pudo iniciar sesión. Intenta de nuevo.');
+      console.error(e);
+    }
+  },
+
+  async logout() {
+    try {
+      clearTimeout(cloud.pushT);
+      if (getMeta().dirty && cloud.status !== 'conflict') await cloud.pushNow();
+      cloud.unsub && cloud.unsub(); cloud.unsub = null;
+      await cloud.auth.signOut();
+    } catch (e) { console.error(e); }
+    state = emptyState(); saveLocal(); setMeta({ owner: null, dirty: false, lastSynced: 0 });
+    render(); toast('Sesión cerrada. Tus datos siguen en tu cuenta.');
+  },
+
+  parse(snap) {
+    try {
+      const d = snap.data();
+      const o = JSON.parse(d.data);
+      if (!o || !o.months || !o.settings || !o.goal) return null;
+      o.updatedAt = num(d.updatedAt) || num(o.updatedAt);
+      return o;
+    } catch (e) { return null; }
+  },
+
+  adopt(remote) {
+    state = remote; saveLocal();
+    setMeta({ dirty: false, lastSynced: remote.updatedAt });
+    render();
+  },
+
+  async onUser(user) {
+    cloud.user = user;
+    if (overlay.querySelector('[data-apply]')) overlay.innerHTML = '';
+    cloud.unsub && cloud.unsub(); cloud.unsub = null;
+    if (!user) { cloud.setStatus('local'); return; }
+    cloud.setStatus('loading');
+    cloud.ref = cloud.db.collection('users').doc(user.uid);
+    try {
+      const snap = await cloud.ref.get();
+      const meta = getMeta();
+      if (meta.owner && meta.owner !== user.uid) { state = emptyState(); saveLocal(); setMeta({ dirty: false, lastSynced: 0 }); }
+      const mine = meta.owner === user.uid;
+      const local = hasData(state);
+      const remote = snap.exists ? cloud.parse(snap) : null;
+      setMeta({ owner: user.uid });
+      if (!remote) {
+        if (local) { await cloud.pushNow(true); }
+        else { cloud.setStatus('synced'); }
+      } else if (!local) {
+        cloud.adopt(remote); cloud.setStatus('synced');
+      } else if (mine && !meta.dirty) {
+        if (remote.updatedAt > state.updatedAt) cloud.adopt(remote);
+        cloud.setStatus('synced');
+      } else if (mine && meta.dirty && remote.updatedAt <= (meta.lastSynced || 0)) {
+        await cloud.pushNow(true);
+      } else if (remote.updatedAt === state.updatedAt) {
+        setMeta({ dirty: false, lastSynced: remote.updatedAt }); cloud.setStatus('synced');
+      } else {
+        cloud.setStatus('conflict');
+        cloud.askConflict(remote);
+        return;
+      }
+      cloud.listen();
+      render();
+    } catch (e) {
+      console.error(e);
+      cloud.setStatus(navigator.onLine ? 'error' : 'offline');
+      toast('No se pudo leer tu cuenta. Revisa las reglas de Firestore en el README.');
+    }
+  },
+
+  askConflict(remote) {
+    const when = t => t ? new Date(t).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) : 'sin fecha';
+    const n = o => Object.keys(o.months).length;
+    openSheet(`<h2>Elige qué datos usar</h2>
+      <p class="muted">Este dispositivo y tu cuenta tienen datos distintos. Se conservarán solo los que elijas.</p>
+      <div class="account"><b>Datos de tu cuenta</b><span class="muted">${n(remote)} ${n(remote) === 1 ? 'mes' : 'meses'} · actualizados ${when(remote.updatedAt)}</span><button class="btn primary" data-pick="cloud">Usar los de mi cuenta</button></div>
+      <div class="account"><b>Datos de este dispositivo</b><span class="muted">${n(state)} ${n(state) === 1 ? 'mes' : 'meses'} · actualizados ${when(state.updatedAt)}</span><button class="btn" data-pick="local">Usar los de este dispositivo</button></div>
+      <p class="hint muted">Los que no elijas se reemplazan. Si dudas, copia un respaldo desde Ajustes antes de decidir.</p>`, sh => {
+      sh.addEventListener('click', async e => {
+        const b = e.target.closest('[data-pick]'); if (!b) return;
+        if (b.dataset.pick === 'cloud') cloud.adopt(remote);
+        else await cloud.pushNow(true);
+        cloud.setStatus('synced'); cloud.listen(); closeSheet(); render();
+      });
+    });
+  },
+
+  listen() {
+    cloud.unsub && cloud.unsub();
+    cloud.unsub = cloud.ref.onSnapshot(snap => {
+      if (snap.metadata.hasPendingWrites || !snap.exists) return;
+      const remote = cloud.parse(snap);
+      if (!remote || remote.updatedAt <= state.updatedAt || getMeta().dirty) return;
+      cloud.deferred = remote;
+      cloud.applyDeferred();
+    }, e => { console.error(e); cloud.setStatus(navigator.onLine ? 'error' : 'offline'); });
+  },
+
+  /* No se reemplazan los datos mientras hay un formulario abierto o se está escribiendo. */
+  applyDeferred() {
+    if (!cloud.deferred) return;
+    const a = document.activeElement;
+    const busy = overlay.firstChild || (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+    if (busy) return;
+    const r = cloud.deferred; cloud.deferred = null;
+    cloud.adopt(r); cloud.setStatus('synced'); toast('Datos actualizados desde otro dispositivo');
+  },
+
+  schedulePush() {
+    if (!cloud.enabled || !cloud.user) return;
+    setMeta({ dirty: true });
+    if (cloud.status === 'conflict' || cloud.status === 'loading') return;
+    cloud.setStatus(navigator.onLine ? 'pending' : 'offline');
+    clearTimeout(cloud.pushT);
+    cloud.pushT = setTimeout(() => cloud.pushNow(), 900);
+  },
+
+  async pushNow(force) {
+    if (!cloud.user || !cloud.ref) return;
+    if (force && !state.updatedAt) state.updatedAt = Date.now();
+    const ts = state.updatedAt;
+    try {
+      await cloud.ref.set({ data: JSON.stringify(state), updatedAt: ts });
+      if (state.updatedAt === ts) { setMeta({ dirty: false, lastSynced: ts }); cloud.setStatus('synced'); }
+      else cloud.schedulePush();
+    } catch (e) {
+      console.error(e);
+      cloud.setStatus(navigator.onLine ? 'error' : 'offline');
+    }
+  }
+});
+document.addEventListener('focusout', () => setTimeout(() => cloud.applyDeferred(), 50));
+
 render();
+cloud.init();
 })();
 </script>
 </body>
