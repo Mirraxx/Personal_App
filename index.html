@@ -713,7 +713,7 @@ function openSheet(html, mount) {
   overlay.innerHTML = `<div class="scrim" data-scrim><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
   const first = $('.sheet input, .sheet select', overlay);
   mount && mount($('.sheet', overlay));
-  first && setTimeout(() => first.focus({ preventScroll: true }), 30);
+  first && setTimeout(() => { if (!overlay.contains(document.activeElement)) first.focus({ preventScroll: true }); }, 30);
 }
 function toast(msg) {
   const t = $('#toast');
@@ -800,7 +800,6 @@ function openSettings() {
     ta.value = JSON.stringify(state);
     sh.addEventListener('click', async e => {
       const b = e.target.closest('button'); if (!b) return;
-      if (b.hasAttribute('data-login')) { cloud.login(); return; }
       if (b.hasAttribute('data-logout')) {
         if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Se borra de este dispositivo y queda en tu cuenta. Toca otra vez'; return; }
         closeSheet(); cloud.logout(); return;
