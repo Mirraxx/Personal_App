@@ -27,7 +27,9 @@ Para probar en tu computador antes de publicar, sirve la carpeta con `python3 -m
 
 - Cada cambio se envía a tu cuenta unos segundos después de editarlo. Lo que cambias en un dispositivo aparece en el otro sin recargar.
 - Si pierdes la conexión, sigues trabajando y se envía al volver.
-- Si dos dispositivos editan sin conexión, gana el último cambio guardado.
-- La primera vez que entras en un dispositivo que ya tiene datos distintos a los de tu cuenta, la app te pregunta cuáles conservar.
-- Al cerrar sesión, los datos se borran de ese dispositivo y quedan en tu cuenta.
+- Los datos de dos dispositivos se **unen**, no se reemplazan: cada ingreso, gasto fijo o deuda se une por separado. Si el mismo elemento se editó en los dos, queda la edición más reciente. Las eliminaciones se respetan.
+- Si el reloj de un dispositivo está desajustado, "la edición más reciente" puede equivocarse en el mismo elemento. Mantén la hora automática activada.
+- La primera vez que entras en un dispositivo que ya tiene datos distintos a los de tu cuenta, la app pregunta si combinar ambos, usar solo los de la cuenta o solo los del dispositivo. No se puede cerrar esa pregunta sin elegir.
+- **Borrar todo** y **Restaurar respaldo** reemplazan los datos en todos tus dispositivos.
+- Al cerrar sesión, los datos se borran de ese dispositivo y quedan en tu cuenta. Si hay cambios que aún no se enviaron, la app no te deja cerrar sesión.
 - Los datos se guardan como un solo documento por usuario en Firestore (`users/{uid}`).
