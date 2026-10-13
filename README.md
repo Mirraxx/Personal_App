@@ -23,6 +23,17 @@ Sin esta configuración la app funciona igual, solo en el dispositivo donde la a
 
 Para probar en tu computador antes de publicar, sirve la carpeta con `python3 -m http.server 8000` y abre `http://localhost:8000` (`localhost` ya viene autorizado).
 
+## Quién puede entrar (administrador)
+
+Solo pueden guardar datos el administrador y los correos que él agregue. El administrador es `israllaire@gmail.com`, definido en `firestore.rules` (función `isAdmin`) y en la constante `ADMIN_EMAIL` de `index.html`. Si cambias el correo, cámbialo en los dos lugares y vuelve a publicar las reglas.
+
+- **Dar o quitar acceso**: el administrador abre Ajustes (el engranaje), sección **Acceso a la app**, escribe un correo de Google y toca **Dar acceso**. Para quitarlo, toca **Quitar** dos veces. El cambio rige de inmediato.
+- Cada persona con acceso tiene **sus propios datos**. No ve los del administrador ni los de otras personas.
+- Quien no está en la lista puede iniciar sesión con Google, pero las reglas le niegan leer y guardar. La app le avisa a quién pedir acceso y sigue funcionando solo en su dispositivo.
+- Si quitas a alguien, sus datos siguen en Firestore. Si quieres borrarlos, hazlo desde la consola de Firebase (*Firestore Database > Datos > users*).
+- La lista vive en la colección `allowed` de Firestore (un documento por correo, en minúsculas). Se puede editar también desde la consola.
+- Cada vez que cambies `firestore.rules`, pégalas de nuevo en *Firestore Database > Reglas* y toca **Publicar**.
+
 ## Cómo sincroniza
 
 - Cada cambio se envía a tu cuenta unos segundos después de editarlo. Lo que cambias en un dispositivo aparece en el otro sin recargar.

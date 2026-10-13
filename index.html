@@ -80,7 +80,7 @@ button { cursor: pointer; }
 .syncdot[hidden] { display: none; }
 .syncdot.synced { background: var(--good); }
 .syncdot.pending, .syncdot.loading { background: var(--warn); }
-.syncdot.error, .syncdot.offline, .syncdot.conflict { background: var(--crit); }
+.syncdot.error, .syncdot.offline, .syncdot.conflict, .syncdot.denied { background: var(--crit); }
 .account { display: grid; gap: 10px; padding: 14px; border-radius: 14px; background: var(--surface2); }
 .account .who { display: flex; gap: 12px; align-items: center; min-width: 0; }
 .account .who img { width: 40px; height: 40px; border-radius: 50%; flex: none; }
@@ -864,6 +864,7 @@ function openSettings() {
   const s = state.settings;
   const html = `<h2>Ajustes y respaldo</h2>
     ${cloud.accountHTML()}
+    ${cloud.accessHTML()}
     <div class="fgrid two">
       <div class="field"><label for="s-pct">Meta de ahorro mensual</label><div class="ib"><input id="s-pct" type="number" inputmode="decimal" min="0" max="100" step="1" value="${s.savePct}"><em>%</em></div><span class="hint">Porcentaje de tu ingreso. Se ajusta solo si no alcanza.</span></div>
       <div class="field"><label for="s-cur">Moneda</label><select id="s-cur">${CURRENCIES.map(c => `<option${c === s.currency ? ' selected' : ''}>${c}</option>`).join('')}</select></div>
@@ -874,6 +875,7 @@ function openSettings() {
   openSheet(html, sh => {
     const ta = $('#s-json', sh);
     ta.value = JSON.stringify(state);
+    cloud.mountAccess(sh);
     sh.addEventListener('click', async e => {
       const b = e.target.closest('button'); if (!b) return;
       if (b.hasAttribute('data-logout')) {
@@ -977,6 +979,8 @@ const FIREBASE_CONFIG = {
   appId: "1:795055974870:web:d16dca1e401866825e1c77"
 };
 const FB_VER = '10.12.2';
+/* Correo del administrador. Debe coincidir con firestore.rules; solo sirve para mostrar el panel de accesos. */
+const ADMIN_EMAIL = 'israllaire@gmail.com';
 const META_KEY = 'plan-mensual.sync';
 const getMeta = () => { try { return JSON.parse(localStorage.getItem(META_KEY)) || {}; } catch (e) { return {}; } };
 const setMeta = patch => { try { localStorage.setItem(META_KEY, JSON.stringify({ ...getMeta(), ...patch })); } catch (e) { /* sin almacenamiento */ } };
@@ -988,7 +992,7 @@ Object.assign(cloud, {
     cloud.status = st;
     const dot = $('#syncDot');
     if (!dot) return;
-    const labels = { synced: 'Sincronizado', pending: 'Guardando en tu cuenta…', loading: 'Conectando…', offline: 'Sin conexión: se enviará al volver', error: 'No se pudo sincronizar', conflict: 'Falta elegir qué datos usar' };
+    const labels = { synced: 'Sincronizado', pending: 'Guardando en tu cuenta…', loading: 'Conectando…', offline: 'Sin conexión: se enviará al volver', error: 'No se pudo sincronizar', conflict: 'Falta elegir qué datos usar', denied: 'Esta cuenta no tiene acceso' };
     dot.hidden = !cloud.user;
     dot.className = 'syncdot ' + st;
     dot.title = labels[st] || '';
@@ -1002,8 +1006,68 @@ Object.assign(cloud, {
       <button class="btn gbtn" data-login><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.2 5.5-4.7 7.2l7.6 5.9c4.4-4.1 6.9-10.1 6.9-17.6z"/><path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 0 1 0-9.4l-7.9-6.1a24 24 0 0 0 0 21.6l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>Entrar con Google</button></div>`;
     const u = cloud.user;
     return `<div class="account"><div class="who">${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer">` : ''}<div><b>${esc(u.displayName || 'Mi cuenta')}</b><span>${esc(u.email || '')}</span></div></div>
-      <span class="pill info" style="width:fit-content"><span id="syncLabel">${esc($('#syncDot')?.title || '')}</span></span>
+      <span class="pill ${cloud.status === 'denied' ? 'crit' : 'info'}" style="width:fit-content"><span id="syncLabel">${esc($('#syncDot')?.title || '')}</span></span>
+      ${cloud.status === 'denied' ? `<span class="hint muted">Pide acceso a ${esc(ADMIN_EMAIL)}. Mientras tanto, la app sigue funcionando solo en este dispositivo.</span>` : ''}
       <div><button class="btn sm" data-logout>Cerrar sesión</button></div></div>`;
+  },
+
+  isAdmin() { return !!cloud.user && String(cloud.user.email || '').toLowerCase() === ADMIN_EMAIL; },
+
+  accessHTML() {
+    if (!cloud.isAdmin() || !cloud.db) return '';
+    return `<div class="account"><b>Acceso a la app</b>
+      <span class="hint muted">Solo estos correos pueden guardar datos. Cada persona que agregues tiene sus propios datos y no ve los tuyos.</span>
+      <div class="rows" id="accessList"><p class="empty">Cargando…</p></div>
+      <form id="accessForm" class="fgrid" novalidate style="gap:8px">
+        <div class="field"><label for="a-email">Dar acceso a otro correo de Google</label><input id="a-email" type="email" inputmode="email" autocomplete="off" placeholder="persona@gmail.com"></div>
+        <button class="btn primary" type="submit">Dar acceso</button>
+      </form></div>`;
+  },
+
+  async mountAccess(sh) {
+    if (!cloud.isAdmin() || !cloud.db) return;
+    const list = $('#accessList', sh), col = cloud.db.collection('allowed');
+    const paint = async () => {
+      try {
+        const snap = await col.get();
+        const mails = snap.docs.map(d => d.id).sort();
+        list.innerHTML = `<div class="row" style="grid-template-columns:1fr"><div class="t"><b>${esc(ADMIN_EMAIL)}</b><span>Administrador (tú)</span></div></div>` +
+          mails.map(m => `<div class="row" style="grid-template-columns:1fr auto"><div class="t"><b>${esc(m)}</b></div><button class="btn sm danger" type="button" data-revoke="${esc(m)}">Quitar</button></div>`).join('');
+      } catch (e) {
+        console.error(e);
+        list.innerHTML = '<p class="empty">No se pudo cargar la lista. Revisa que las reglas nuevas estén publicadas en Firebase.</p>';
+      }
+    };
+    await paint();
+    $('#accessForm', sh).addEventListener('submit', async e => {
+      e.preventDefault();
+      const input = $('#a-email', sh), mail = input.value.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { toast('Escribe un correo válido.'); input.focus(); return; }
+      if (mail === ADMIN_EMAIL) { toast('Ese es tu correo: ya tienes acceso.'); return; }
+      try {
+        await col.doc(mail).set({ email: mail, addedAt: Date.now(), addedBy: ADMIN_EMAIL });
+        input.value = ''; toast(`Acceso dado a ${mail}`); await paint();
+      } catch (err) { console.error(err); toast('No se pudo dar el acceso. Revisa tu conexión y las reglas.'); }
+    });
+    list.addEventListener('click', async e => {
+      const b = e.target.closest('[data-revoke]'); if (!b) return;
+      if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Toca otra vez'; return; }
+      try { await col.doc(b.dataset.revoke).delete(); toast('Acceso quitado'); await paint(); }
+      catch (err) { console.error(err); toast('No se pudo quitar el acceso.'); }
+    });
+  },
+
+  /* Un rechazo de las reglas significa que el correo no está autorizado (o se le quitó el acceso). */
+  fail(e) {
+    console.error(e);
+    if (e && e.code === 'permission-denied') {
+      cloud.ready = false; cloud.unsub && cloud.unsub(); cloud.unsub = null; clearTimeout(cloud.pushT);
+      cloud.setStatus('denied');
+      toast(`Este correo no tiene acceso a la app. Pide acceso a ${ADMIN_EMAIL}.`);
+      return true;
+    }
+    cloud.setStatus(navigator.onLine ? 'error' : 'offline');
+    return false;
   },
 
   loadScript(src) {
@@ -1034,7 +1098,7 @@ Object.assign(cloud, {
 
   /* Reintenta lo que quedó pendiente: la lectura inicial que falló o los cambios sin enviar. */
   retry() {
-    if (!cloud.user || cloud.initializing || cloud.status === 'conflict') return;
+    if (!cloud.user || cloud.initializing || cloud.status === 'conflict' || cloud.status === 'denied') return;
     if (!cloud.ready) cloud.onUser(cloud.user);
     else if (getMeta().dirty) cloud.schedulePush();
   },
@@ -1054,10 +1118,13 @@ Object.assign(cloud, {
     }
   },
 
-  /* Cierra sesión solo si todo lo que hay en este dispositivo ya está en la cuenta. */
+  /* Cierra sesión solo si todo lo que hay en este dispositivo ya está en la cuenta. Los datos del dispositivo
+     se borran únicamente si estaban sincronizados con esta cuenta; si la cuenta no tiene acceso, se conservan. */
   async logout() {
     clearTimeout(cloud.pushT);
-    if (getMeta().dirty) {
+    const denied = cloud.status === 'denied';
+    const synced = !denied && getMeta().owner === (cloud.user && cloud.user.uid);
+    if (synced && getMeta().dirty) {
       const ok = cloud.ready && await cloud.pushNow();
       if (!ok) { toast('Tus últimos cambios aún no se envían a tu cuenta. Conéctate e inténtalo de nuevo.'); return; }
     }
@@ -1066,8 +1133,8 @@ Object.assign(cloud, {
       cloud.deferred = null; cloud.ready = false;
       await cloud.auth.signOut();
     } catch (e) { console.error(e); }
-    state = emptyState(); saveLocal(); setMeta({ owner: null, dirty: false, lastSynced: 0 });
-    render(); toast('Sesión cerrada. Tus datos siguen en tu cuenta.');
+    if (synced) { state = emptyState(); saveLocal(); setMeta({ owner: null, dirty: false, lastSynced: 0 }); }
+    render(); toast(synced ? 'Sesión cerrada. Tus datos siguen en tu cuenta.' : 'Sesión cerrada.');
   },
 
   parse(snap) {
@@ -1134,8 +1201,7 @@ Object.assign(cloud, {
     } catch (e) {
       console.error(e);
       cloud.ready = false;
-      cloud.setStatus(navigator.onLine ? 'error' : 'offline');
-      toast('No se pudo leer tu cuenta. Se reintentará al volver la conexión.');
+      if (!cloud.fail(e)) toast('No se pudo leer tu cuenta. Se reintentará al volver la conexión.');
     }
     cloud.initializing = false;
   },
@@ -1173,7 +1239,7 @@ Object.assign(cloud, {
       if (!remote || remote.updatedAt === num(getMeta().lastSynced)) return;
       cloud.deferred = remote;
       cloud.applyDeferred();
-    }, e => { console.error(e); cloud.setStatus(navigator.onLine ? 'error' : 'offline'); });
+    }, e => { cloud.fail(e); });
   },
 
   /* No se tocan los datos mientras hay un formulario abierto o se está escribiendo; al terminar se unen. */
@@ -1189,7 +1255,7 @@ Object.assign(cloud, {
   },
 
   schedulePush() {
-    if (!cloud.enabled || !cloud.user) return;
+    if (!cloud.enabled || !cloud.user || cloud.status === 'denied') return;
     setMeta({ dirty: true });
     if (!cloud.ready) return;
     cloud.setStatus(navigator.onLine ? 'pending' : 'offline');
@@ -1213,8 +1279,7 @@ Object.assign(cloud, {
         tx.set(cloud.ref, { data: JSON.stringify(merged), updatedAt: merged.updatedAt });
       });
     } catch (e) {
-      console.error(e);
-      cloud.setStatus(navigator.onLine ? 'error' : 'offline');
+      cloud.fail(e);
       return false;
     }
     if (state.updatedAt !== ts) { cloud.schedulePush(); return true; }
