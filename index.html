@@ -1111,9 +1111,15 @@ Object.assign(cloud, {
       const msgs = {
         'auth/popup-blocked': 'El navegador bloqueó la ventana de Google. Permite las ventanas emergentes para este sitio e inténtalo de nuevo.',
         'auth/operation-not-supported-in-this-environment': 'Este navegador no permite iniciar sesión aquí. Abre la app en Safari o Chrome.',
-        'auth/unauthorized-domain': 'Este sitio no está autorizado en Firebase. Revisa los dominios autorizados.'
+        'auth/unauthorized-domain': 'Este sitio no está autorizado en Firebase. Revisa los dominios autorizados.',
+        'auth/operation-not-allowed': 'El inicio de sesión con Google no está activado en Firebase (Authentication > Sign-in method > Google).',
+        'auth/configuration-not-found': 'Authentication no está configurado en Firebase. Entra a Authentication y toca Comenzar.',
+        'auth/network-request-failed': 'Sin conexión con Google. Revisa tu internet e inténtalo de nuevo.',
+        'auth/web-storage-unsupported': 'El navegador bloquea el almacenamiento que necesita el inicio de sesión. Prueba en otro navegador o fuera de la navegación privada.',
+        'auth/invalid-api-key': 'La clave de Firebase de la app no es válida.',
+        'auth/api-key-not-valid': 'La clave de Firebase de la app no es válida.'
       };
-      toast(msgs[e.code] || 'No se pudo iniciar sesión. Intenta de nuevo.');
+      toast(msgs[e.code] || `No se pudo iniciar sesión${e.code ? ` (${e.code})` : ''}. Intenta de nuevo.`);
       console.error(e);
     }
   },
