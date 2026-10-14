@@ -2,9 +2,9 @@
 
 App personal (web y móvil) para planificar las finanzas mes a mes.
 
-- **Mes**: ingresos y gastos fijos.
+- **Mes**: ingresos, gastos fijos (Agua, Luz, Arriendo / dividendo, Mascotas, Planes u otros) y gastos variables (Salidas a comer, Ropa, Citas u otros), con atajos para agregarlos rápido.
 - **Deudas**: banco, tipo de tarjeta o crédito, saldo, pago mensual, tasa, mantención y otros cargos.
-- **Resumen**: reparto del ingreso, límite de gasto diario y semanal, ahorro recomendado y consejos.
+- **Resumen**: gráfico de cuatro barras (ingresos, gastos fijos, gastos variables y deudas) que cambian de color según qué parte del ingreso consumen (hasta 50% verde, sobre 50% amarillo, sobre 75% rojo), límite de gasto diario y semanal, ahorro recomendado y consejos.
 - **Meta**: objetivo de ahorro manual, ahorro real por mes y proyección de cuándo lo alcanzas.
 
 Es un solo archivo, `index.html`, sin proceso de build. Los datos se guardan en el `localStorage` del dispositivo. Con la cuenta de Google activada, los mismos datos se sincronizan entre tu teléfono y tu navegador.
