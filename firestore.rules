@@ -2,19 +2,24 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Solo cuentas de Google cuentan: aunque alguien active otro método de acceso en la
+    // consola de Firebase por error, no bastaría para pasar por el administrador o por un
+    // correo con acceso.
+    function withGoogle() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && request.auth.token.email_verified == true;
+    }
+
     // Administrador: el único que puede dar o quitar accesos. Si cambias el correo, cámbialo también en index.html.
     function isAdmin() {
-      return request.auth != null
-        && request.auth.token.email_verified == true
-        && request.auth.token.email.lower() == 'israllaire@gmail.com';
+      return withGoogle() && request.auth.token.email.lower() == 'israllaire@gmail.com';
     }
 
     // Tiene acceso el administrador y los correos agregados en la colección "allowed".
     function isAllowed() {
       return isAdmin()
-        || (request.auth != null
-            && request.auth.token.email_verified == true
-            && exists(/databases/$(database)/documents/allowed/$(request.auth.token.email.lower())));
+        || (withGoogle() && exists(/databases/$(database)/documents/allowed/$(request.auth.token.email.lower())));
     }
 
     // Datos de cada persona: solo su dueño, y solo si su correo tiene acceso.
@@ -30,7 +35,7 @@ service cloud.firestore {
     // Lista de correos con acceso. Id del documento = correo en minúsculas.
     match /allowed/{mail} {
       allow read: if isAdmin();
-      allow get: if request.auth != null && request.auth.token.email.lower() == mail;
+      allow get: if withGoogle() && request.auth.token.email.lower() == mail;
       allow create, update: if isAdmin()
         && mail == mail.lower()
         && request.resource.data.keys().hasOnly(['email', 'addedAt', 'addedBy'])

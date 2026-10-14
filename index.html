@@ -2,6 +2,16 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<script>
+/* Defensa contra "clickjacking": GitHub Pages no deja mandar X-Frame-Options ni
+   frame-ancestors (no hay encabezados HTTP propios), así que esto corre en la página.
+   Si alguien te incrusta en un sitio ajeno, se oculta todo y se intenta salir del marco
+   antes de pintar nada, para que no se pueda engañar a nadie a tocar un botón oculto. */
+if (window.top !== window.self) {
+  document.write('<style>html{display:none!important}</style>');
+  try { window.top.location = window.self.location.href; } catch (e) { /* un iframe con sandbox puede impedirlo */ }
+}
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#F2F4F1" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1714" media="(prefers-color-scheme: dark)">
