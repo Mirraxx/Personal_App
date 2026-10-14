@@ -150,11 +150,10 @@ button { cursor: pointer; }
 .pill.info { background: var(--accent-soft); color: var(--accent); }
 
 .card.chart { background: var(--chart-bg); box-shadow: none; }
-.bchart { --plot-h: 210px; display: grid; gap: 10px; margin-top: 4px; }
-.plot { position: relative; height: var(--plot-h); margin-left: 38px; }
+.bchart { --plot-h: 200px; display: grid; gap: 10px; margin-top: 2px; }
+.plot { position: relative; height: var(--plot-h); }
 .plot .inner { position: absolute; inset: 24px 0 0 0; border-bottom: 1px solid var(--ink2); }
-.ref { position: absolute; left: -38px; right: 0; border-top: 1px dashed var(--line); }
-.ref span { position: absolute; left: 0; top: -8px; width: 32px; text-align: right; font-size: 11.5px; color: var(--muted); background: var(--chart-bg); }
+.ref { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--line); }
 .ref.full { border-top-style: solid; }
 .cols { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4, 1fr); }
 .col { position: relative; min-width: 0; }
@@ -164,19 +163,19 @@ button { cursor: pointer; }
 .b.ok { background: var(--bar-ok); }
 .b.warn { background: var(--bar-warn); }
 .b.crit { background: var(--bar-crit); }
-.blabels { display: grid; grid-template-columns: repeat(4, 1fr); margin-left: 38px; gap: 0; }
-.blabels > div { min-width: 0; text-align: center; padding-inline: 2px; display: grid; gap: 2px; align-content: start; }
-.blabels b { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
-.blabels span { font-size: 12.5px; color: var(--ink2); }
-.blabels .st { display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: 12px; color: var(--muted); }
-.blabels .st i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-.dot-income { background: var(--bar-income); } .dot-ok { background: var(--bar-ok); } .dot-warn { background: var(--bar-warn); } .dot-crit { background: var(--bar-crit); }
-.chart-note { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--muted); margin-top: 6px; }
-.chart-note span { display: inline-flex; align-items: center; gap: 6px; }
-.chart-note i { width: 8px; height: 8px; border-radius: 50%; }
-.chart-total { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 12px; margin-top: 4px; border-top: 1px solid var(--line); font-size: 14px; }
-.chart-total .tl { display: inline-flex; align-items: center; gap: 8px; }
-.chart-total .tl i { width: 9px; height: 9px; border-radius: 50%; }
+.blabels { display: grid; grid-template-columns: repeat(4, 1fr); }
+.blabels b { font-size: 13px; font-weight: 600; text-align: center; overflow-wrap: anywhere; padding-inline: 2px; }
+.infobtn { width: 30px; height: 30px; border-radius: 50%; border: 0; background: none; color: var(--muted); display: grid; place-items: center; flex: none; }
+.infobtn:hover { background: var(--surface2); color: var(--ink); }
+.infobtn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.swatch { display: inline-block; width: 14px; height: 14px; border-radius: 4px; flex: none; margin-top: 3px; }
+.swatch.income { background: var(--bar-income); } .swatch.ok { background: var(--bar-ok); } .swatch.warn { background: var(--bar-warn); } .swatch.crit { background: var(--bar-crit); }
+.help { display: grid; gap: 14px; }
+.help h3 { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.help .it { display: grid; grid-template-columns: 14px 1fr; gap: 12px; align-items: start; }
+.help .it.plain { grid-template-columns: 1fr; }
+.help .it p { color: var(--ink2); font-size: 14.5px; }
+.help .it b { display: block; font-weight: 600; font-size: 15px; }
 .legend { display: grid; gap: 2px; }
 .lg { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14.5px; }
 .lg:last-child { border-bottom: 0; }
@@ -611,7 +610,7 @@ function emptyMonthCard() {
 
 /* ---- Resumen ---- */
 /* Nivel de una barra según qué parte del ingreso consume: hasta 50% sano, sobre 50% atención, sobre 75% alto. */
-const LEVEL_TEXT = { ok: 'Sano', warn: 'Atención', crit: 'Alto' };
+const LEVEL_TEXT = { income: 'base', ok: 'sano', warn: 'atención', crit: 'alto' };
 function levelOf(amount, income) {
   if (income <= 0) return amount > 0 ? 'crit' : 'ok';
   const r = amount / income;
@@ -620,25 +619,42 @@ function levelOf(amount, income) {
 function barsChart(a) {
   const debts = a.debtPay + a.fees;
   const items = [
-    { name: 'Ingresos', val: a.income, lvl: 'income', note: a.m.incomes.length ? `${a.m.incomes.length} ${a.m.incomes.length === 1 ? 'fuente' : 'fuentes'}` : 'Sin datos' },
+    { name: 'Ingresos', val: a.income, lvl: 'income' },
     { name: 'Gastos fijos', val: a.fixed, lvl: levelOf(a.fixed, a.income) },
     { name: 'Gastos variables', val: a.variableSpent, lvl: levelOf(a.variableSpent, a.income) },
     { name: 'Deudas', val: debts, lvl: levelOf(debts, a.income) }
   ];
   const max = Math.max(a.income, ...items.map(i => i.val), 1);
   const h = v => (v / max * 100).toFixed(2) + '%';
-  const refs = a.income > 0 ? [[0.5, '50%'], [0.75, '75%'], [1, '100%']].map(([f, l]) => `<div class="ref${f === 1 ? ' full' : ''}" style="bottom:${h(a.income * f)}"><span>${l}</span></div>`).join('') : '';
-  const cols = items.map(i => `<div class="col" style="--h:${h(i.val)}" title="${esc(i.name)}: ${fmt(i.val)}"><span class="val num">${fmt(i.val)}</span><div class="b ${i.lvl}"></div></div>`).join('');
-  const labels = items.map(i => `<div><b>${i.name}</b>${i.lvl === 'income' ? `<span>${i.note}</span><span class="st"><i class="dot-income"></i>Base</span>` : `<span class="num">${a.income > 0 ? Math.round(i.val / a.income * 100) + '% del ingreso' : (i.val > 0 ? 'Sin ingresos' : '—')}</span><span class="st"><i class="dot-${i.lvl}"></i>${LEVEL_TEXT[i.lvl]}</span>`}</div>`).join('');
-  const total = a.fixed + a.variableSpent + debts;
-  const tl = levelOf(total, a.income);
-  const summary = items.map(i => `${i.name} ${fmt(i.val)}`).join(', ');
-  return `<div class="bchart" role="img" aria-label="Barras del mes: ${esc(summary)}">
+  const refs = a.income > 0 ? [0.5, 0.75, 1].map(f => `<div class="ref${f === 1 ? ' full' : ''}" style="bottom:${h(a.income * f)}"></div>`).join('') : '';
+  /* El porcentaje y el estado no se escriben en el gráfico: quedan en la tabla, en el tooltip y para lectores de pantalla. */
+  const detail = i => `${i.name}: ${fmt(i.val)}${i.lvl === 'income' ? '' : (a.income > 0 ? `, ${Math.round(i.val / a.income * 100)}% del ingreso` : '')}, ${LEVEL_TEXT[i.lvl]}`;
+  const cols = items.map(i => `<div class="col" style="--h:${h(i.val)}" title="${esc(detail(i))}"><span class="val num">${fmt(i.val)}</span><div class="b ${i.lvl}"></div></div>`).join('');
+  const labels = items.map(i => `<b>${i.name}</b>`).join('');
+  return `<div class="bchart" role="img" aria-label="Barras del mes. ${esc(items.map(detail).join('. '))}">
       <div class="plot"><div class="inner">${refs}<div class="cols">${cols}</div></div></div>
       <div class="blabels">${labels}</div>
+    </div>`;
+}
+
+const INFO_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v5.5M12 7.6h.01"/></svg>';
+function openChartInfo() {
+  openSheet(`<h2>Cómo leer el gráfico</h2>
+    <div class="help">
+      <p class="muted">Cada barra se compara con lo que ganas en el mes. Los porcentajes exactos están en la tabla “Plan del mes”.</p>
+      <h3>Qué muestra cada barra</h3>
+      <div class="it"><span class="swatch income"></span><div><b>Ingresos</b><p>Todo lo que ganas este mes. Es la medida de las otras tres barras.</p></div></div>
+      <div class="it plain"><div><b>Gastos fijos</b><p>Lo que pagas más o menos igual cada mes: agua, luz, arriendo o dividendo, mascotas, planes.</p></div></div>
+      <div class="it plain"><div><b>Gastos variables</b><p>Lo que gastas y cambia: salidas a comer, ropa, citas.</p></div></div>
+      <div class="it plain"><div><b>Deudas</b><p>Tus pagos mensuales de tarjetas y créditos, más la mantención y otros cargos.</p></div></div>
+      <h3>Qué significan los colores</h3>
+      <div class="it"><span class="swatch ok"></span><div><b>Verde</b><p>La barra usa hasta el 50% de tus ingresos. Vas bien.</p></div></div>
+      <div class="it"><span class="swatch warn"></span><div><b>Amarillo</b><p>Usa más del 50% y hasta el 75%. Conviene vigilarla.</p></div></div>
+      <div class="it"><span class="swatch crit"></span><div><b>Rojo</b><p>Usa más del 75% de tus ingresos. Es lo más urgente de bajar.</p></div></div>
+      <p class="muted">Las líneas del gráfico marcan el 50% y el 75% de tus ingresos, y la línea continua es el 100%. Si pasas el 100%, gastas más de lo que ganas.</p>
     </div>
-    <div class="chart-total"><span class="tl"><i class="dot-${tl}"></i><span>Gastos y deudas suman <b class="num">${fmt(total)}</b>${a.income > 0 ? ` <span class="muted num">(${Math.round(total / a.income * 100)}% del ingreso)</span>` : ''}</span></span></div>
-    <div class="chart-note"><span><i class="dot-ok"></i>Hasta 50% del ingreso</span><span><i class="dot-warn"></i>Sobre 50%</span><span><i class="dot-crit"></i>Sobre 75%</span></div>`;
+    <div class="actions"><button class="btn primary" data-close>Entendido</button></div>`,
+    sh => sh.addEventListener('click', e => { if (e.target.closest('[data-close]')) closeSheet(); }));
 }
 
 function viewResumen() {
@@ -651,6 +667,7 @@ function viewResumen() {
     (a.extra > 0 ? `<div class="lg sub"><span>Pago extra a ${esc(debtName(a.priority))}</span><span class="pc"></span><span class="v num">${fmt(a.extra)}</span></div>` : '') : '';
   const lgHTML = lgRow('Ingresos', a.income, false) + lgRow('Gastos fijos', a.fixed, true) + lgRow('Gastos variables', a.variableSpent, true) +
     lgRow('Pagos de deudas', a.debtPay, true) + lgRow('Mantención y cargos', a.fees, true) +
+    lgRow('Total de gastos y deudas', a.fixed + a.variableSpent + a.debtPay + a.fees, true, 'strong') +
     lgRow('Ahorro recomendado', a.saveTarget, true) + subs + lgRow('Presupuesto para gastos variables', a.varBudget, false, 'strong');
   const tips = advice(a).map(t => `<div class="tip ${t.level}"><span class="ic">${ICON[t.level]}</span><div><b>${esc(t.title)}</b><p>${esc(t.text)}</p></div></div>`).join('');
   view.innerHTML = `
@@ -664,7 +681,7 @@ function viewResumen() {
     </div>
   </section>
   <section class="card chart">
-    <div class="sec-head"><h2>Tu mes en cuatro barras</h2></div>
+    <div class="sec-head"><h2>Tu mes</h2><button class="infobtn" data-info="chart" aria-label="Cómo leer el gráfico">${INFO_ICON}</button></div>
     ${barsChart(a)}
   </section>
   <section class="card">
@@ -1035,6 +1052,7 @@ document.addEventListener('click', e => {
   const ed = t.closest('[data-edit]');
   if (ed) { const [k, id] = ed.dataset.edit.split(':'); openForm(k, id); return; }
   if (t.closest('[data-login]')) { cloud.login(); return; }
+  if (t.closest('[data-info]')) { openChartInfo(); return; }
   const preset = t.closest('[data-preset]');
   if (preset) { const i = preset.dataset.preset.indexOf(':'); openForm(preset.dataset.preset.slice(0, i), null, preset.dataset.preset.slice(i + 1)); return; }
   const act = t.closest('[data-act]');
