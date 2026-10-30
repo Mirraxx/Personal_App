@@ -55,3 +55,30 @@ Solo pueden guardar datos el administrador y los correos que él agregue. El adm
 - **Borrar todo** y **Restaurar respaldo** reemplazan los datos en todos tus dispositivos.
 - Al cerrar sesión, los datos se borran de ese dispositivo y quedan en tu cuenta. Si hay cambios que aún no se enviaron, la app no te deja cerrar sesión.
 - Los datos se guardan como un solo documento por usuario en Firestore (`users/{uid}`).
+
+## Página de regalo (`regalo/`)
+
+Una carta digital para una persona especial, en la misma carpeta del proyecto: `regalo/index.html`, `style.css`, `app.js` y `vendor/qrcode.js` (generador de QR, licencia MIT). Sin proceso de build. Queda en `https://<usuario>.github.io/Personal_App/regalo/`.
+
+**Qué tiene**: un sobre que se abre con contraseña y pista (con una segunda pista tras 3 intentos fallidos), una carta que se escribe palabra por palabra, contador de tiempo juntos y cuenta regresiva al próximo mesiversario o aniversario, galería de fotos con visor, línea del tiempo, "Cosas que amo de ti" (corazones que se dan vuelta), playlist de Spotify y un mensaje final. Tiene tres temas de color (Jardín, Atardecer y Cielo) y funciona en el teléfono y en el computador.
+
+### Activarla (una sola vez)
+
+1. **Publica las reglas nuevas.** Copia `firestore.rules` en *Firestore Database > Reglas* y toca **Publicar**. Sin esto la página no puede leer ni guardar. Las reglas agregan tres colecciones: `gift`, `giftPhotos` y `giftVisits`.
+2. **Dominio autorizado.** Si la app de finanzas ya inicia sesión con Google en tu sitio, no hay nada más que hacer (es el mismo dominio y el mismo proyecto de Firebase).
+3. **Entra como creador.** Abre `/regalo/`, toca **Modo creador** (abajo), inicia sesión con la cuenta de administrador (`ADMIN_EMAIL` en `app.js` y en `firestore.rules`) y toca **Preparar la carta**: eliges nombres, fecha de inicio, contraseña y pista. Luego personalizas todo con el lápiz flotante: General, Carta, Fotos, Historia, Razones, Música, Acceso y Compartir (enlace, QR, aperturas y respaldo).
+4. **Guarda.** Los cambios se ven en vivo, pero se publican al tocar **Guardar cambios**.
+
+### Seguridad y límites
+
+- **El contenido va cifrado.** Carta, textos y fotos se cifran en el navegador (AES-GCM) con una llave que solo se abre con la contraseña (PBKDF2, 300.000 vueltas). En Firestore queda solo texto ilegible; la pista es lo único que se guarda en claro. La contraseña no distingue mayúsculas ni tildes.
+- **Una contraseña débil se puede adivinar** probando combinaciones sin conexión. Usa una frase que solo ustedes sepan.
+- **Si olvidas la contraseña, el contenido no se recupera.** Descarga el respaldo (pestaña Compartir) y guárdalo en un lugar privado: va **sin cifrar**. En la puerta, el creador tiene **Olvidé la contraseña**, que borra todo para empezar de nuevo.
+- **Fotos**: hasta 40; se reducen a 1400 px y ~400 KB antes de subirlas, y cada una es un documento aparte (límite de 1 MB de Firestore).
+- **Spotify**: el reproductor incrustado solo toca canciones completas si la persona tiene sesión iniciada en Spotify en ese navegador; si no, suenan fragmentos de 30 segundos. La playlist debe ser pública.
+- **Aperturas**: cuando la persona entra con la contraseña se guarda la hora; la ves en *Compartir > Aperturas*. No se registra nada más.
+- La página lleva `noindex` para que los buscadores no la listen.
+
+### Probar sin Firebase
+
+Abre `regalo/?demo` (por ejemplo con `python3 -m http.server 8000` y `http://localhost:8000/regalo/?demo`). Todo queda en el navegador y sirve para ensayar el diseño y el editor. No se comparte con nadie.

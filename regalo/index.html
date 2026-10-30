@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#FFF3EE">
+<title>Una carta para ti</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%237D2A47' d='M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 5 6.3 5c2 0 3.6 1.1 4.4 2.6h2.6C14.1 6.1 15.700 5 17.700 5 21 5 23.100 8.400 21.600 11.800 19.500 16.400 12 21 12 21z'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="jardin">
+
+<!-- Dibujos reutilizables: ramita, flor, corazón -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 21s-7.500-4.600-9.600-9.200C.9 8.400 3 5 6.300 5c2 0 3.600 1.100 4.400 2.600h2.600C14.100 6.100 15.700 5 17.700 5 21 5 23.100 8.400 21.600 11.800 19.500 16.400 12 21 12 21z" fill="currentColor"/></symbol>
+    <symbol id="i-sprig" viewBox="0 0 120 220">
+      <path d="M60 218 C 56 170, 66 120, 58 70 C 54 45, 62 20, 70 4" fill="none" stroke="var(--sage-deep)" stroke-width="2.500" stroke-linecap="round"/>
+      <g fill="var(--sage)" stroke="var(--sage-deep)" stroke-width="1.200">
+        <path d="M58 190 C 36 188, 20 172, 14 154 C 36 154, 54 166, 58 190Z"/>
+        <path d="M60 170 C 82 168, 98 152, 104 134 C 82 134, 64 146, 60 170Z"/>
+        <path d="M58 140 C 38 136, 24 120, 20 102 C 40 104, 54 116, 58 140Z"/>
+        <path d="M59 118 C 80 114, 94 98, 98 80 C 78 82, 63 94, 59 118Z"/>
+        <path d="M58 92 C 42 86, 32 72, 30 56 C 46 58, 56 70, 58 92Z"/>
+        <path d="M60 70 C 76 64, 86 50, 88 34 C 72 36, 62 48, 60 70Z"/>
+        <path d="M64 40 C 56 32, 56 20, 62 8 C 70 18, 70 30, 64 40Z"/>
+      </g>
+    </symbol>
+    <symbol id="i-blossom" viewBox="0 0 100 100">
+      <g fill="var(--rose)" stroke="var(--rose-deep)" stroke-width="1.500" stroke-linejoin="round">
+        <path d="M50 50 C 36 36, 36 12, 50 6 C 64 12, 64 36, 50 50Z"/>
+        <path d="M50 50 C 36 36, 36 12, 50 6 C 64 12, 64 36, 50 50Z" transform="rotate(72 50 50)"/>
+        <path d="M50 50 C 36 36, 36 12, 50 6 C 64 12, 64 36, 50 50Z" transform="rotate(144 50 50)"/>
+        <path d="M50 50 C 36 36, 36 12, 50 6 C 64 12, 64 36, 50 50Z" transform="rotate(216 50 50)"/>
+        <path d="M50 50 C 36 36, 36 12, 50 6 C 64 12, 64 36, 50 50Z" transform="rotate(288 50 50)"/>
+      </g>
+      <circle cx="50" cy="50" r="7" fill="var(--paper)" stroke="var(--rose-deep)" stroke-width="1.500"/>
+      <g fill="var(--wine-3)"><circle cx="50" cy="45" r="1.400"/><circle cx="54" cy="50" r="1.400"/><circle cx="50" cy="55" r="1.400"/><circle cx="46" cy="50" r="1.400"/></g>
+    </symbol>
+  </defs>
+</svg>
+
+<canvas id="ambient" aria-hidden="true"></canvas>
+
+<!-- ============ Puerta: el sobre con contraseña ============ -->
+<section id="gate" class="gate" aria-label="Carta cerrada">
+  <div class="gate-inner">
+    <p class="script gate-eyebrow">Una carta para ti</p>
+
+    <div class="envelope" id="envelope" aria-hidden="true">
+      <div class="env-back"></div>
+      <div class="env-letter"><span></span><span></span><span></span><span></span></div>
+      <div class="env-front"></div>
+      <div class="env-flap"></div>
+      <div class="seal"><svg><use href="#i-heart"/></svg></div>
+    </div>
+
+    <form id="gate-form" class="gate-card" autocomplete="off" hidden>
+      <div class="hint-tag">
+        <span class="hint-label">Pista</span>
+        <p id="hint-text"></p>
+        <p id="hint2-text" class="hint2" hidden></p>
+      </div>
+      <label class="sr-only" for="pw">Contraseña</label>
+      <div class="pw-row">
+        <input id="pw" type="password" placeholder="Escribe la contraseña" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" required>
+        <button id="gate-go" type="submit" class="btn">Abrir</button>
+      </div>
+      <label class="chk gate-chk"><input type="checkbox" id="remember"> Recordar en este dispositivo</label>
+      <p id="gate-msg" class="gate-msg" role="status" aria-live="polite"></p>
+    </form>
+
+    <div id="gate-state" class="gate-state" role="status" aria-live="polite"><p>Un momento…</p></div>
+
+    <div class="creator-line">
+      <button id="creator-btn" class="linkish" type="button">Modo creador</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Configuración inicial (solo creador, primera vez) ============ -->
+<section id="setup" class="gate setup" hidden aria-label="Preparar la carta">
+  <form id="setup-form" class="gate-card setup-card" autocomplete="off">
+    <p class="script">Preparemos la carta</p>
+    <p class="muted small">Tu contraseña cifra todo en este mismo dispositivo. Si la olvidas, el contenido no se puede recuperar.</p>
+    <label class="f"><span>Para (su nombre)</span><input name="to" maxlength="40" placeholder="Ej: Mi amor" required></label>
+    <label class="f"><span>De (tu nombre)</span><input name="from" maxlength="40" placeholder="Tu nombre" required></label>
+    <label class="f"><span>Fecha en que empezó todo</span><input name="start" type="date" required><small>Revisa el año. De esta fecha salen el contador y los aniversarios.</small></label>
+    <label class="f"><span>Contraseña</span><input name="pw" type="password" minlength="6" autocapitalize="none" autocorrect="off" spellcheck="false" required><small>No distingue mayúsculas ni tildes. Mínimo 6 caracteres; mejor una frase que solo ustedes sepan.</small></label>
+    <label class="f"><span>Pista de la contraseña</span><input name="hint" maxlength="200" placeholder="Algo que solo esa persona entienda" required></label>
+    <label class="f"><span>Segunda pista <em>(opcional, aparece tras 3 intentos fallidos)</em></span><input name="hint2" maxlength="200" placeholder="Una pista más clara"></label>
+    <label class="chk"><input type="checkbox" id="setup-show"> Mostrar contraseña</label>
+    <p id="setup-msg" class="gate-msg" role="alert"></p>
+    <div class="row">
+      <button type="button" id="setup-cancel" class="btn ghost">Cancelar</button>
+      <button type="submit" id="setup-go" class="btn">Crear la carta</button>
+    </div>
+  </form>
+</section>
+
+<!-- ============ La carta y todo lo demás ============ -->
+<main id="page" hidden>
+
+  <section id="s-letter" class="sec s-letter">
+    <article class="paper" id="paper">
+      <svg class="deco d-sprig-l" aria-hidden="true"><use href="#i-sprig"/></svg>
+      <svg class="deco d-sprig-r" aria-hidden="true"><use href="#i-sprig"/></svg>
+      <svg class="deco d-blossom" aria-hidden="true"><use href="#i-blossom"/></svg>
+      <p class="script to" id="l-to"></p>
+      <div class="letter-body" id="l-body"></div>
+      <p class="script sign" id="l-sign"></p>
+    </article>
+    <button class="scroll-cue" type="button" data-scroll="#s-counter" aria-label="Seguir bajando"><span>Sigue bajando</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </section>
+
+  <section id="s-counter" class="sec s-counter">
+    <div class="wrap">
+      <p class="eyebrow">Desde aquel día</p>
+      <h2 id="c-title"></h2>
+      <p class="since" id="c-since"></p>
+      <div class="units" id="c-units"></div>
+      <p class="days-big" id="c-days"></p>
+      <p class="next" id="c-next"></p>
+    </div>
+  </section>
+
+  <section id="s-gallery" class="sec s-gallery">
+    <div class="wrap">
+      <p class="eyebrow">Recuerdos</p>
+      <h2>Nuestros momentos</h2>
+    </div>
+    <div class="carousel-wrap">
+      <button class="car-btn prev" type="button" id="car-prev" aria-label="Foto anterior"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div class="carousel" id="carousel" tabindex="0" aria-label="Galería de fotos"></div>
+      <button class="car-btn next" type="button" id="car-next" aria-label="Foto siguiente"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+    <div class="dots" id="car-dots"></div>
+  </section>
+
+  <section id="s-timeline" class="sec s-timeline">
+    <div class="wrap">
+      <p class="eyebrow">Nuestra historia</p>
+      <h2>Lo que fuimos viviendo</h2>
+      <ol class="timeline" id="timeline"></ol>
+    </div>
+  </section>
+
+  <section id="s-reasons" class="sec s-reasons">
+    <div class="wrap">
+      <p class="eyebrow">Para que lo sepas</p>
+      <h2>Cosas que amo de ti</h2>
+      <p class="lead">Toca cada corazón para descubrirlas.</p>
+      <div class="reasons" id="reasons"></div>
+      <p class="progress" id="reasons-progress"></p>
+    </div>
+  </section>
+
+  <section id="s-music" class="sec s-music">
+    <div class="wrap narrow">
+      <p class="eyebrow">Nuestra música</p>
+      <h2 id="m-title"></h2>
+      <p class="lead" id="m-note"></p>
+      <div class="player" id="player"></div>
+    </div>
+  </section>
+
+  <section id="s-finale" class="sec s-finale">
+    <div class="wrap narrow center">
+      <svg class="big-heart" aria-hidden="true"><use href="#i-heart"/></svg>
+      <p class="script finale-text" id="f-text"></p>
+      <button class="btn big" id="f-btn" type="button">Te quiero</button>
+      <p class="foot" id="f-foot"></p>
+    </div>
+  </section>
+</main>
+
+<button id="fab-edit" class="fab" type="button" hidden aria-label="Editar la página">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round"/><path d="M13.500 6.500l4 4" stroke="currentColor" stroke-width="1.800"/></svg>
+</button>
+
+<!-- ============ Editor del creador ============ -->
+<aside id="editor" class="editor" hidden aria-label="Editor">
+  <header class="ed-head">
+    <strong>Editar la página</strong>
+    <span id="ed-state" class="ed-state"></span>
+    <button id="ed-close" class="ed-x" type="button" aria-label="Cerrar editor">✕</button>
+  </header>
+  <nav class="ed-tabs" id="ed-tabs" role="tablist"></nav>
+  <div class="ed-body" id="ed-body"></div>
+  <footer class="ed-foot">
+    <button id="ed-save" class="btn" type="button">Guardar cambios</button>
+  </footer>
+</aside>
+
+<div id="lightbox" class="lightbox" hidden role="dialog" aria-modal="true" aria-label="Foto ampliada">
+  <button class="lb-x" type="button" id="lb-close" aria-label="Cerrar">✕</button>
+  <button class="car-btn prev" type="button" id="lb-prev" aria-label="Anterior"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  <figure><img id="lb-img" alt=""><figcaption id="lb-cap" class="script"></figcaption></figure>
+  <button class="car-btn next" type="button" id="lb-next" aria-label="Siguiente"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="demo-badge" class="demo-badge" hidden>Modo prueba · los datos quedan solo en este navegador</div>
+
+<noscript><p style="padding:2rem;text-align:center">Esta carta necesita JavaScript para abrirse.</p></noscript>
+<script src="app.js"></script>
+</body>
+</html>
