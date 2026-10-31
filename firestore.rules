@@ -27,33 +27,6 @@ service cloud.firestore {
         && request.resource.data.updatedAt is number;
     }
 
-    // Página de regalo (repositorio Mirraxx/De-lala, que usa este mismo proyecto de Firebase). Todo el contenido se cifra
-    // en el navegador con la contraseña del regalo, así que cualquiera puede leer los documentos pero solo se entienden
-    // con esa contraseña. Solo el administrador escribe. Estas reglas deben vivir aquí: Firestore tiene un único conjunto.
-    match /gift/{doc} {
-      allow read: if true;
-      allow create, update: if isAdmin() && doc == 'config'
-        && request.resource.data.keys().hasOnly(['v', 'salt', 'iter', 'hint', 'hint2', 'wiv', 'wct', 'iv', 'ct', 'updatedAt'])
-        && request.resource.data.ct is string && request.resource.data.ct.size() < 900000
-        && request.resource.data.hint is string && request.resource.data.hint.size() < 300
-        && request.resource.data.hint2 is string && request.resource.data.hint2.size() < 300;
-      allow delete: if isAdmin();
-    }
-
-    match /giftPhotos/{id} {
-      allow read: if true;
-      allow create, update: if isAdmin()
-        && request.resource.data.keys().hasOnly(['iv', 'ct', 'updatedAt'])
-        && request.resource.data.ct is string && request.resource.data.ct.size() < 900000;
-      allow delete: if isAdmin();
-    }
-
-    // Aperturas del regalo: quien lo abre deja una marca de hora; solo el administrador las lee.
-    match /giftVisits/{id} {
-      allow create: if request.resource.data.keys().hasOnly(['t']) && request.resource.data.t is number;
-      allow read, delete: if isAdmin();
-    }
-
     // Lista de correos con acceso. Id del documento = correo en minúsculas.
     match /allowed/{mail} {
       allow read: if isAdmin();
